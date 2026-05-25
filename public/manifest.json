@@ -1,0 +1,18 @@
+{
+  "name": "ADHD Cleaning Checklist",
+  "short_name": "Cleaning",
+  "description": "Your personal ADHD-friendly cleaning companion",
+  "theme_color": "#4CAF8A",
+  "background_color": "#F8F9FA",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
