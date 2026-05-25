@@ -203,7 +203,11 @@ function TaskForm({initial,onSave,onDelete,accent,saveLabel}){
 
 function BottomNav({tab,setTab}){const tabs=[{id:"home",label:"Home",icon:Ic.home},{id:"tasks",label:"Tasks",icon:Ic.tasks},{id:"random",label:"Random",icon:Ic.random},{id:"progress",label:"Progress",icon:Ic.progress},{id:"more",label:"Lists",icon:Ic.more}];return(<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.white,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>{tabs.map(t=>{const active=tab===t.id,color=active?C.teal:C.greyText;return(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"none",padding:"8px 0 10px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>{t.icon(color)}<span style={{fontSize:10,color,fontWeight:active?700:400,fontFamily:"inherit"}}>{t.label}</span></button>);})}</div>);}
 
-function TaskRow({task,onToggle,onEdit,showDay,isLast}){const col=RC[task.room]||C.greyText;return(<div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:isLast?"":`1px solid ${C.border}`,opacity:task.completed?0.45:1}}><CBx checked={task.completed} onToggle={onToggle}/><div style={{flex:1,cursor:"pointer"}} onClick={onToggle}><div style={{fontSize:14,fontWeight:600,color:C.dark,textDecoration:task.completed?"line-through":"none"}}>{task.taskName}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>{task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:`${col}20`,padding:"2px 7px",borderRadius:20}}>{task.room}</span>}{task.months&&task.months!=="every"&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{task.months}</span>}{showDay&&task.day&&<span style={{fontSize:11,color:C.greyText}}>{task.day}</span>}</div></div><div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12,marginRight:4}}>{Ic.clock()}<span>{task.minutes}m</span></div><button type="button" onClick={e=>{e.stopPropagation();onEdit();}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button></div>);}
+function TaskRow({task,onToggle,onEdit,showDay,isLast}){const col=RC[task.room]||C.greyText;
+  const dayLabel=task.category==="Weekly"&&task.day?DAYS_SHORT[WEEKDAYS.indexOf(task.day)]:null;
+  const dateLabel=task.category==="Monthly"&&task.day?(task.day==="Last day"?"Last":task.day.replace("Day ","")):null;
+  return(<div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:isLast?"":`1px solid ${C.border}`,opacity:task.completed?0.45:1}}><CBx checked={task.completed} onToggle={onToggle}/><div style={{flex:1,cursor:"pointer"}} onClick={onToggle}><div style={{fontSize:14,fontWeight:600,color:C.dark,textDecoration:task.completed?"line-through":"none"}}>{task.taskName}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>{task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:`${col}20`,padding:"2px 7px",borderRadius:20}}>{task.room}</span>}{dayLabel&&<span style={{fontSize:10,fontWeight:700,color:C.teal,background:"#E8F7F2",padding:"2px 7px",borderRadius:20}}>{dayLabel}</span>}{dateLabel&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{dateLabel}</span>}{task.months&&task.months!=="every"&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{task.months.slice(0,3)}</span>}</div></div><div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12,marginRight:4}}>{Ic.clock()}<span>{task.minutes}m</span></div><button type="button" onClick={e=>{e.stopPropagation();onEdit();}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button></div>);
+}
 
 function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
   const now=new Date();
@@ -214,10 +218,14 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
   const curMonth=MONTHS_FULL[now.getMonth()];
 
   const dailyTasks=tasks.filter(t=>t.category==="Daily"&&t.day==="Today");
-  const weeklyTasks=tasks.filter(t=>t.category==="Weekly");
+  const weeklyTasks=tasks.filter(t=>t.category==="Weekly"&&t.day===DOW);
   const monthlyTasks=tasks.filter(t=>{
     if(t.category!=="Monthly")return false;
-    return t.months===curMonth||t.months==="every";
+    const monthOk=t.months===curMonth||t.months==="every";
+    if(!monthOk)return false;
+    if(t.day===`Day ${dateNum}`)return true;
+    if(t.day==="Last day"&&isLastDay)return true;
+    return false;
   });
 
   const allToday=[...dailyTasks,...weeklyTasks,...monthlyTasks];
@@ -420,7 +428,7 @@ export default function App(){
   const[tab,setTab]=useState("home");const[sub,setSub]=useState(null);const[editId,setEditId]=useState(null);
   const[tasks,setTasks]=useState(()=>initTasks());const[timeChores,setTimeChores]=useState(()=>initTimeChores());const[randomChores,setRandomChores]=useState(()=>initRandomChores());const[completedChores,setCompletedChores]=useState(()=>initCompletedChores());
   const goTab=useCallback(t=>{setTab(t);setSub(null);},[]);const back=screen=>()=>setSub(screen||null);
-  useState(()=>{
+  useEffect(()=>{
     const schedule=()=>{
       const enabled=LS.get("notifEnabled",false);const time=LS.get("notifTime","08:00");
       if(!enabled||typeof Notification==="undefined"||Notification.permission!=="granted")return;
@@ -434,7 +442,7 @@ export default function App(){
       return()=>clearTimeout(tid);
     };
     schedule();
-  });
+  },[]);
   const render=()=>{
     if(sub==="addTask")         return <AddTaskScreen tasks={tasks} setTasks={setTasks} onBack={back()}/>;
     if(sub==="editTask")        return <EditTaskScreen tasks={tasks} setTasks={setTasks} taskId={editId} onBack={back()}/>;
