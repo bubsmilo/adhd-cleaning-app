@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 
 const C={teal:"#4CAF8A",coral:"#E85B6A",orange:"#F39A3D",yellow:"#F4C542",blue:"#8ECAD0",dark:"#1F2937",grey:"#F3F4F6",white:"#FFFFFF",greyText:"#9CA3AF",border:"#E5E7EB"};
-const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},clear:(k)=>{try{localStorage.removeItem(k);}catch{}}};
+const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}},clear:(k)=>{try{localStorage.removeItem(k);}catch(e){}}};
 const DATA_VERSION="v18";
 if(LS.get("dataVersion",null)!==DATA_VERSION){["tasks","timeChores","randomChores","completedChores","lastResetDate","lastWeekReset","lastMonthReset","deepClean","declutter","seasonal","yearly","quarterly","speedCleanTime","speedCleanRoom"].forEach(k=>LS.clear(k));LS.set("dataVersion",DATA_VERSION);}
 const TODAY=new Date().toISOString().split("T")[0];
