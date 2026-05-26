@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 
 const C={teal:"#4CAF8A",coral:"#E85B6A",orange:"#F39A3D",yellow:"#F4C542",blue:"#8ECAD0",dark:"#1F2937",grey:"#F3F4F6",white:"#FFFFFF",greyText:"#9CA3AF",border:"#E5E7EB"};
 const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}},clear:(k)=>{try{localStorage.removeItem(k);}catch(e){}}};
-const DATA_VERSION="v18";
+const DATA_VERSION="v19";
 if(LS.get("dataVersion",null)!==DATA_VERSION){["tasks","timeChores","randomChores","completedChores","lastResetDate","lastWeekReset","lastMonthReset","deepClean","declutter","seasonal","yearly","quarterly","speedCleanTime","speedCleanRoom"].forEach(k=>LS.clear(k));LS.set("dataVersion",DATA_VERSION);}
 const TODAY=new Date().toISOString().split("T")[0];
 const lastReset=LS.get("lastResetDate","");
@@ -28,7 +28,22 @@ const MONTHS_FULL=["January","February","March","April","May","June","July","Aug
 function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 function daySort(d){if(!d)return 999;if(d==="Last day")return 32;if(d.startsWith("Day "))return parseInt(d.replace("Day ",""));const i=DAY_ORDER.indexOf(d);return i>=0?i:50;}
 function choreIcon(name){const n=(name||"").toLowerCase();if(/vacuum|hoover|carpet/.test(n))return"🧹";if(/mop|floor|sweep/.test(n))return"🧹";if(/dust|vent|baseboard|blind/.test(n))return"🪣";if(/window|glass/.test(n))return"🪟";if(/toilet|bath|shower|sink|scrub/.test(n))return"🚽";if(/kitchen|counter|stove|oven|microwave|fridge|freezer/.test(n))return"🍳";if(/dish/.test(n))return"🍽️";if(/laundry|iron|fold/.test(n))return"👕";if(/bed|sheet|pillow/.test(n))return"🛏️";if(/trash|recycl|bin|garbage/.test(n))return"🗑️";if(/garden|lawn|mow|weed|outdoor|plant/.test(n))return"🌿";if(/garage|car/.test(n))return"🚗";if(/organiz|declutter|drawer|cupboard|closet/.test(n))return"📦";if(/wipe|clean|sanitiz/.test(n))return"🧽";if(/light|switch/.test(n))return"💡";if(/mirror/.test(n))return"🪞";if(/pet|cat|dog|litter/.test(n))return"🐾";return"🧹";}
-function initChecklist(key,data){const ex=LS.get(key,null);if(ex)return ex;const state={};Object.keys(data).forEach(s=>{state[s]=data[s].items.map(()=>false);});LS.set(key,state);return state;}
+function initChecklist(key,data){
+  const ex=LS.get(key,null);
+  if(ex){
+    // Migrate old format (array of bools) to new format
+    const firstVal=Object.values(ex)[0];
+    if(Array.isArray(firstVal)){
+      const migrated={};
+      Object.keys(data).forEach(s=>{migrated[s]={items:[...data[s].items],checked:(ex[s]||data[s].items.map(()=>false))};});
+      LS.set(key,migrated);return migrated;
+    }
+    return ex;
+  }
+  const state={};
+  Object.keys(data).forEach(s=>{state[s]={items:[...data[s].items],checked:data[s].items.map(()=>false)};});
+  LS.set(key,state);return state;
+}
 
 const QUARTERLY_ITEMS=["Deep clean kitchen appliances","Wash windows and window treatments","Clean air vents and replace HVAC filters","Declutter and donate unused items","Power wash exterior surfaces","Clean and inspect outdoor furniture","Deep clean refrigerator and freezer","Declutter and organize garage or storage areas","Clean and inspect fireplace and chimney","Deep clean carpets and upholstery","Clean and organize closets and storage areas","Deep clean bathroom fixtures and surfaces","Test and replace batteries in smoke detectors","Wash curtains, blinds, or drapes according to care instructions","Power wash siding, decks, patios, and driveways","Wash outdoor cushions and pillows","Inspect and repair any damaged outdoor furniture","Wash shower curtains or doors"];
 
@@ -138,43 +153,102 @@ function MonthDayPicker({value,onChange,accent}){return(<div><div style={{fontSi
 function ChecklistScreen({title,color,data,storageKey,onBack}){
   const[state,setState]=useState(()=>initChecklist(storageKey,data));
   const[expanded,setExpanded]=useState(null);
-  const toggle=(section,idx)=>{const ns={...state,[section]:[...state[section]]};ns[section][idx]=!ns[section][idx];setState(ns);LS.set(storageKey,ns);};
-  const resetAll=()=>{const ns={};Object.keys(data).forEach(s=>{ns[s]=data[s].items.map(()=>false);});setState(ns);LS.set(storageKey,ns);};
-  const totalItems=Object.keys(data).reduce((a,s)=>a+data[s].items.length,0);
-  const doneItems=Object.keys(state).reduce((a,s)=>a+(state[s]||[]).filter(Boolean).length,0);
+  const[editMode,setEditMode]=useState(false);
+  const[newItemText,setNewItemText]=useState({});
+
+  const save=(ns)=>{setState(ns);LS.set(storageKey,ns);};
+
+  const toggle=(section,idx)=>{
+    const ns={...state};
+    ns[section]={...ns[section],checked:[...ns[section].checked]};
+    ns[section].checked[idx]=!ns[section].checked[idx];
+    save(ns);
+  };
+
+  const deleteItem=(section,idx)=>{
+    const ns={...state};
+    const items=[...ns[section].items];
+    const checked=[...ns[section].checked];
+    items.splice(idx,1);checked.splice(idx,1);
+    ns[section]={...ns[section],items,checked};
+    save(ns);
+  };
+
+  const addItem=(section)=>{
+    const text=(newItemText[section]||"").trim();
+    if(!text)return;
+    const ns={...state};
+    ns[section]={...ns[section],items:[...ns[section].items,text],checked:[...ns[section].checked,false]};
+    save(ns);
+    setNewItemText(prev=>({...prev,[section]:""}));
+  };
+
+  const resetAll=()=>{
+    const ns={};
+    Object.keys(state).forEach(s=>{ns[s]={...state[s],checked:state[s].checked.map(()=>false)};});
+    save(ns);
+  };
+
+  const sections=Object.keys(state);
+  const totalItems=sections.reduce((a,s)=>a+(state[s].items||[]).length,0);
+  const doneItems=sections.reduce((a,s)=>a+(state[s].checked||[]).filter(Boolean).length,0);
   const pct=totalItems?Math.round((doneItems/totalItems)*100):0;
+
   return(
     <div style={{paddingBottom:80}}>
-      <Header title={title} color={color} onBack={onBack} fs={24}/><Dots/>
+      <Header title={title} color={color} onBack={onBack} fs={24}/>
+      <Dots/>
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>
         <div style={{background:C.white,borderRadius:20,padding:"16px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:13,fontWeight:700,color}}>Overall Progress</span><span style={{fontSize:13,fontWeight:700,color:C.dark}}>{doneItems}/{totalItems}</span></div>
           <div style={{height:10,background:C.grey,borderRadius:6,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:color,borderRadius:6,transition:"width 0.4s"}}/></div>
         </div>
-        {Object.keys(data).map(section=>{
-          const sec=data[section];const checks=state[section]||[];const secDone=checks.filter(Boolean).length;const isOpen=expanded===section;
+        {sections.map(section=>{
+          const sec=data[section]||{emoji:"📋",color};
+          const sItems=state[section].items||[];
+          const checks=state[section].checked||[];
+          const secDone=checks.filter(Boolean).length;
+          const isOpen=expanded===section;
           return(
             <div key={section} style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"hidden"}}>
               <button type="button" onClick={()=>setExpanded(isOpen?null:section)} style={{width:"100%",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"16px 18px",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
-                <span style={{fontSize:22,flexShrink:0}}>{sec.emoji}</span>
-                <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800,color:C.dark}}>{section}</div><div style={{fontSize:12,color:C.greyText,marginTop:2}}>{secDone} of {sec.items.length} done</div></div>
-                <div style={{width:36,height:36,borderRadius:"50%",background:`${sec.color}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:800,color:sec.color}}>{Math.round((secDone/sec.items.length)*100)}%</span></div>
+                <span style={{fontSize:22,flexShrink:0}}>{sec.emoji||"📋"}</span>
+                <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800,color:C.dark}}>{section}</div><div style={{fontSize:12,color:C.greyText,marginTop:2}}>{secDone} of {sItems.length} done</div></div>
+                <div style={{width:36,height:36,borderRadius:"50%",background:`${sec.color||color}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:800,color:sec.color||color}}>{sItems.length?Math.round((secDone/sItems.length)*100):0}%</span></div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s",flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               {isOpen&&(
                 <div style={{borderTop:`1px solid ${C.border}`}}>
-                  {sec.items.map((item,idx)=>(
-                    <div key={idx} onClick={()=>toggle(section,idx)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",borderBottom:idx<sec.items.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",opacity:checks[idx]?0.6:1}}>
-                      <CBx checked={checks[idx]||false} onToggle={()=>toggle(section,idx)} color={sec.color}/>
-                      <span style={{fontSize:13,fontWeight:500,color:C.dark,textDecoration:checks[idx]?"line-through":"none",lineHeight:1.4}}>{item}</span>
+                  {sItems.map((item,idx)=>(
+                    <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 18px",borderBottom:idx<sItems.length-1||editMode?`1px solid ${C.border}`:"none",cursor:editMode?"default":"pointer",opacity:checks[idx]&&!editMode?0.6:1}}
+                      onClick={()=>!editMode&&toggle(section,idx)}>
+                      {editMode?(
+                        <button type="button" onClick={()=>deleteItem(section,idx)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
+                      ):(
+                        <CBx checked={checks[idx]||false} onToggle={()=>toggle(section,idx)} color={sec.color||color}/>
+                      )}
+                      <span style={{fontSize:13,fontWeight:500,color:C.dark,textDecoration:checks[idx]&&!editMode?"line-through":"none",lineHeight:1.4,flex:1}}>{item}</span>
                     </div>
                   ))}
+                  {editMode&&(
+                    <div style={{display:"flex",gap:8,padding:"10px 14px",background:"#FAFAFA"}}>
+                      <input
+                        style={{flex:1,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:10,fontSize:13,fontFamily:"inherit",color:C.dark,background:C.white,outline:"none"}}
+                        placeholder="Add new item..."
+                        value={newItemText[section]||""}
+                        onChange={e=>setNewItemText(prev=>({...prev,[section]:e.target.value}))}
+                        onKeyDown={e=>e.key==="Enter"&&addItem(section)}
+                      />
+                      <button type="button" onClick={()=>addItem(section)} style={{background:color,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           );
         })}
-        <button type="button" onClick={resetAll} style={{background:color,border:"none",borderRadius:16,padding:"13px",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}><div style={{width:28,height:28,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.refresh(color)}</div><span style={{fontSize:18,fontWeight:700,color:C.white}}>Reset All</span></button>
+        <button type="button" onClick={resetAll} style={{background:color,border:"none",borderRadius:16,padding:"13px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}><div style={{width:28,height:28,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.refresh(color)}</div><span style={{fontSize:16,fontWeight:700,color:C.white}}>Reset All</span></button>
+        <button type="button" onClick={()=>setEditMode(!editMode)} style={{background:C.grey,color:C.dark,border:"none",borderRadius:16,padding:"14px",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit",width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><span style={{fontSize:22}}>{editMode?"✅":"⚙️"}</span><span>{editMode?"Done Managing":"Manage Checklist"}</span></button>
       </div>
     </div>
   );
@@ -201,7 +275,10 @@ function TaskForm({initial,onSave,onDelete,accent,saveLabel}){
   </div>)}<div style={{textAlign:"center"}}><label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:8}}>Time (minutes)</label><div style={{display:"flex",justifyContent:"center"}}><Stepper value={minutes} onChange={setMinutes} accent={accent}/></div></div><div><label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>Notes (optional)</label><textarea style={{...inp,height:80,resize:"none"}} placeholder="Any additional notes..." value={notes} onChange={e=>setNotes(e.target.value)}/></div><button type="button" onClick={handleSave} disabled={saved} style={{background:saved?C.teal:accent,color:C.white,border:"none",borderRadius:16,padding:"16px",fontSize:18,fontWeight:700,cursor:saved?"default":"pointer",fontFamily:"inherit"}}>{saved?"✓ Saved!":saveLabel}</button>{onDelete&&(<button type="button" onClick={onDelete} style={{background:C.white,color:C.coral,border:`2px solid ${C.coral}`,borderRadius:16,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:8}}>{Ic.trash()}<span>Delete Task</span></button>)}</div>);
 }
 
-function BottomNav({tab,setTab}){const tabs=[{id:"home",label:"Home",icon:Ic.home},{id:"tasks",label:"Tasks",icon:Ic.tasks},{id:"random",label:"Random",icon:Ic.random},{id:"progress",label:"Progress",icon:Ic.progress},{id:"more",label:"Lists",icon:Ic.more}];return(<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.white,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>{tabs.map(t=>{const active=tab===t.id,color=active?C.teal:C.greyText;return(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"none",padding:"8px 0 10px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>{t.icon(color)}<span style={{fontSize:10,color,fontWeight:active?700:400,fontFamily:"inherit"}}>{t.label}</span></button>);})}</div>);}
+function BottomNav({tab,setTab}){
+  const tabs=[{id:"home",label:"Home",icon:Ic.home,activeColor:C.teal},{id:"tasks",label:"Tasks",icon:Ic.tasks,activeColor:C.coral},{id:"random",label:"Random",icon:Ic.random,activeColor:C.orange},{id:"progress",label:"Progress",icon:Ic.progress,activeColor:C.teal},{id:"more",label:"Lists",icon:Ic.more,activeColor:C.blue}];
+  return(<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.white,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>{tabs.map(t=>{const active=tab===t.id,color=active?t.activeColor:C.greyText;return(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"none",padding:"8px 0 10px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>{t.icon(color)}<span style={{fontSize:10,color,fontWeight:active?700:400,fontFamily:"inherit"}}>{t.label}</span></button>);})}</div>);
+}
 
 function TaskRow({task,onToggle,onEdit,showDay,isLast}){const col=RC[task.room]||C.greyText;
   const dayLabel=task.category==="Weekly"&&task.day?DAYS_SHORT[WEEKDAYS.indexOf(task.day)]:null;
