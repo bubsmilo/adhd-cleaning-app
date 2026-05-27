@@ -331,10 +331,10 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
   };
 
   return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
-      <img src="/icon.png" alt="" style={{width:100,height:100,flexShrink:0,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>
+      <img src="/icon.png" alt="" style={{width:150,height:150,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
       <div style={{flex:1,textAlign:"center"}}>
-        <div style={{fontSize:24,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"center",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:8}}/>, ...b])}</div>
-        <div style={{fontSize:24,fontWeight:900,color:C.dark,marginBottom:6,letterSpacing:2}}>CHECKLIST</div>
+        <div style={{fontSize:28,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"center",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:8}}/>, ...b])}</div>
+        <div style={{fontSize:28,fontWeight:900,color:C.dark,marginBottom:6,letterSpacing:2}}>CHECKLIST</div>
         <div style={{display:"flex",justifyContent:"center",gap:16}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
       </div>
     </div>
@@ -547,7 +547,7 @@ export default function App(){
   if(splash)return(
     <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",gap:20}}>
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <img src="/icon.png" alt="ADHD Cleaning" style={{width:120,height:120,objectFit:"contain",animation:"slideUp 0.5s ease-out"}} onError={e=>e.target.style.display="none"}/>
+      <img src="/icon.png" alt="ADHD Cleaning" style={{width:150,height:150,objectFit:"contain",border:"none",background:"transparent",display:"block",animation:"slideUp 0.5s ease-out"}} onError={e=>e.target.style.display="none"}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,animation:"slideUp 0.6s ease-out"}}>
         <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>
           {"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}
