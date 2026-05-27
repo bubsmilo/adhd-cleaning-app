@@ -369,11 +369,12 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
   };
 
   return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
-      <img src="/icon.png" alt="" style={{width:125,height:125,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
-      <div style={{flex:1,textAlign:"center"}}>
-        <div style={{fontSize:28,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"center",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:8}}/>, ...b])}</div>
-        <div style={{fontSize:28,fontWeight:900,color:C.dark,marginBottom:6,letterSpacing:2}}>CHECKLIST</div>
-        <div style={{display:"flex",justifyContent:"center",gap:16}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
+      <img src="/icon.png" alt="" style={{width:135,height:135,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
+      <div style={{flex:1,textAlign:"left"}}>
+        <div style={{fontSize:24,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"flex-start",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:8}}/>, ...b])}</div>
+        <div style={{fontSize:24,fontWeight:900,color:C.dark,marginBottom:4,letterSpacing:2}}>CHECKLIST</div>
+        <div style={{fontSize:12,color:C.greyText,fontWeight:500,marginBottom:8,letterSpacing:0.5}}>Clean home. Calm mind.</div>
+        <div style={{display:"flex",justifyContent:"flex-start",gap:16}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
       </div>
     </div>
   <div style={{margin:"12px 16px",background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:11,fontWeight:700,color:C.coral,letterSpacing:1,marginBottom:12}}>TODAY'S PROGRESS</div><ProgressBar pct={pct} done={done} total={total} minsDone={minsDone} accent={C.blue} accentEnd="#6ab8c8" pctColor={C.orange} clockColor={C.teal}/></div>
