@@ -369,7 +369,7 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
   };
 
   return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
-      <img src="/icon.png" alt="" style={{width:150,height:150,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
+      <img src="/icon.png" alt="" style={{width:125,height:125,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
       <div style={{flex:1,textAlign:"center"}}>
         <div style={{fontSize:28,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"center",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:8}}/>, ...b])}</div>
         <div style={{fontSize:28,fontWeight:900,color:C.dark,marginBottom:6,letterSpacing:2}}>CHECKLIST</div>
