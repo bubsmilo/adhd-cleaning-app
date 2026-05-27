@@ -310,12 +310,26 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
   const total=allToday.length;
   const pct=total?Math.round((done/total)*100):0;
   const minsDone=allToday.filter(t=>t.completed).reduce((a,t)=>a+t.minutes,0);
-  const toggle=id=>{const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);setTasks(u);LS.set("tasks",u);};
+  const[animating,setAnimating]=useState({});
+  const toggle=id=>{
+    const task=tasks.find(t=>t.id===id);
+    if(task&&!task.completed){
+      setAnimating(prev=>({...prev,[id]:true}));
+      setTimeout(()=>{
+        const u=tasks.map(t=>t.id===id?{...t,completed:true}:t);
+        setTasks(u);LS.set("tasks",u);
+        setAnimating(prev=>{const n={...prev};delete n[id];return n;});
+      },350);
+    } else {
+      const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);setTasks(u);LS.set("tasks",u);
+    }
+  };
 
   const catColor={Daily:C.coral,Weekly:C.teal,Monthly:"#7B5DD9"};
 
   const renderSection=(label,list)=>{
     if(!list.length)return null;
+    const sorted=[...list.filter(t=>!t.completed&&!animating[t.id]),...list.filter(t=>animating[t.id]),...list.filter(t=>t.completed&&!animating[t.id])];
     return(
       <div key={label} style={{marginBottom:12}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,paddingLeft:2}}>
@@ -324,7 +338,11 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
           <span style={{fontSize:11,color:C.greyText}}>{list.filter(t=>t.completed).length}/{list.length}</span>
         </div>
         <div style={{background:C.white,borderRadius:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"hidden"}}>
-          {list.map((task,i)=><TaskRow key={task.id} task={task} isLast={i===list.length-1} onToggle={()=>toggle(task.id)} onEdit={()=>{setEditId(task.id);setSubScreen("editTask");}}/>)}
+          {sorted.map((task,i)=>(
+            <div key={task.id} style={{transition:"all 0.35s ease",transform:animating[task.id]?"translateY(8px)":"translateY(0)",opacity:animating[task.id]?0.3:1}}>
+              <TaskRow task={task} isLast={i===sorted.length-1} onToggle={()=>toggle(task.id)} onEdit={()=>{setEditId(task.id);setSubScreen("editTask");}}/>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -545,17 +563,55 @@ export default function App(){
     if(tab==="more")     return <MoreTab setSubScreen={setSub}/>;
   };
   if(splash)return(
-    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",gap:20}}>
-      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <img src="/icon.png" alt="ADHD Cleaning" style={{width:150,height:150,objectFit:"contain",border:"none",background:"transparent",display:"block",animation:"slideUp 0.5s ease-out"}} onError={e=>e.target.style.display="none"}/>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,animation:"slideUp 0.6s ease-out"}}>
-        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>
-          {"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}
-        </div>
+    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",gap:20,position:"relative",overflow:"hidden"}}>
+      <style dangerouslySetInnerHTML={{__html:`
+        @keyframes splashSpin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+        @keyframes splashSpinR{from{transform:translate(-50%,-50%) rotate(360deg)}to{transform:translate(-50%,-50%) rotate(0deg)}}
+        @keyframes splashUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .ring1{position:absolute;width:380px;height:380px;border-radius:50%;border:3px dashed #F39A3D40;top:50%;left:50%;animation:splashSpin 12s linear infinite}
+        .ring2{position:absolute;width:300px;height:300px;border-radius:50%;border:3px dashed #4CAF8A40;top:50%;left:50%;animation:splashSpinR 9s linear infinite}
+        .ring3{position:absolute;width:220px;height:220px;border-radius:50%;border:3px dashed #E85B6A40;top:50%;left:50%;animation:splashSpin 7s linear infinite}
+        .ring4{position:absolute;width:140px;height:140px;border-radius:50%;border:3px dashed #8ECAD040;top:50%;left:50%;animation:splashSpinR 5s linear infinite}
+        .splash-up{animation:splashUp 0.6s ease-out both}
+        .splash-up2{animation:splashUp 0.7s ease-out both}
+      `}}/>
+      <div className="ring1"/><div className="ring2"/><div className="ring3"/><div className="ring4"/>
+      <img src="/icon.png" alt="" className="splash-up" style={{width:150,height:150,objectFit:"contain",border:"none",background:"transparent",position:"relative",zIndex:2}} onError={e=>e.target.style.display="none"}/>
+      <div className="splash-up2" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,position:"relative",zIndex:2}}>
+        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}</div>
         <div style={{fontSize:32,fontWeight:900,color:"#1F2937",letterSpacing:2}}>CHECKLIST</div>
         <div style={{display:"flex",gap:14,marginTop:10}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
       </div>
     </div>
   );
+  
+  const[tab,setTab]=useState("home");const[sub,setSub]=useState(null);const[editId,setEditId]=useState(null);
+  const[tasks,setTasks]=useState(()=>initTasks());const[timeChores,setTimeChores]=useState(()=>initTimeChores());const[randomChores,setRandomChores]=useState(()=>initRandomChores());const[completedChores,setCompletedChores]=useState(()=>initCompletedChores());
+  const goTab=useCallback(t=>{setTab(t);setSub(null);},[]);const back=screen=>()=>setSub(screen||null);
+  const render=()=>{
+    if(sub==="addTask")         return <AddTaskScreen tasks={tasks} setTasks={setTasks} onBack={back()}/>;
+    if(sub==="editTask")        return <EditTaskScreen tasks={tasks} setTasks={setTasks} taskId={editId} onBack={back()}/>;
+    if(sub==="haveTime")        return <HaveTimeScreen timeChores={timeChores} setTimeChores={setTimeChores} setSubScreen={setSub} onBack={back()}/>;
+    if(sub==="myTimeChores")    return <MyTimeChoresScreen timeChores={timeChores} setTimeChores={setTimeChores} setSubScreen={setSub} onBack={back("haveTime")}/>;
+    if(sub==="addTimeChore")    return <AddTimeChoreScreen timeChores={timeChores} setTimeChores={setTimeChores} onBack={back("myTimeChores")}/>;
+    if(sub==="randomChore")     return <RandomChoreScreen randomChores={randomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} onBack={back()}/>;
+    if(sub==="myRandomChores")  return <MyRandomChoresScreen randomChores={randomChores} setRandomChores={setRandomChores} setSubScreen={setSub} onBack={back()}/>;
+    if(sub==="addRandomChore")  return <AddRandomChoreScreen randomChores={randomChores} setRandomChores={setRandomChores} onBack={back("myRandomChores")}/>;
+    if(sub==="completedChores") return <CompletedRandomChoresScreen completedChores={completedChores} onBack={back()}/>;
+    if(sub==="speedClean")      return <SpeedCleanTab setSubScreen={setSub} onBack={back("more")}/>;
+    if(sub==="speedCleanTime")  return <ChecklistScreen title="By Time" color={C.teal} data={SPEED_CLEAN_TIME_DATA} storageKey="speedCleanTime" onBack={back("speedClean")}/>;
+    if(sub==="speedCleanRoom")  return <ChecklistScreen title="Room by Room" color={C.orange} data={SPEED_CLEAN_ROOM_DATA} storageKey="speedCleanRoom" onBack={back("speedClean")}/>;
+    if(sub==="quarterly")       return <ChecklistScreen title="Quarterly" color="#E07820" data={QUARTERLY_DATA} storageKey="quarterly" onBack={back("more")}/>;
+    if(sub==="deepClean")       return <ChecklistScreen title="Deep Clean" color={C.orange} data={DEEP_CLEAN_DATA} storageKey="deepClean" onBack={back("more")}/>;
+    if(sub==="declutter")       return <ChecklistScreen title="Declutter" color={C.coral} data={DECLUTTER_DATA} storageKey="declutter" onBack={back("more")}/>;
+    if(sub==="seasonal")        return <ChecklistScreen title="Seasonal" color={C.teal} data={SEASONAL_DATA} storageKey="seasonal" onBack={back("more")}/>;
+    if(sub==="yearly")          return <ChecklistScreen title="Yearly Schedule" color={C.orange} data={YEARLY_DATA} storageKey="yearly" onBack={back("more")}/>;
+    if(sub==="settings")        return <SettingsScreen tasks={tasks} timeChores={timeChores} randomChores={randomChores} completedChores={completedChores} onBack={back(tab==="more"?"more":null)}/>;
+    if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
+    if(tab==="tasks")    return <TasksScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
+    if(tab==="random")   return <RandomTab randomChores={randomChores} setRandomChores={setRandomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} setSubScreen={setSub}/>;
+    if(tab==="progress") return <ProgressScreen tasks={tasks} completedChores={completedChores} setSubScreen={setSub}/>;
+    if(tab==="more")     return <MoreTab setSubScreen={setSub}/>;
+  };
   return(<div style={{background:"#F8F9FA",minHeight:"100vh",maxWidth:430,margin:"0 auto",fontFamily:"'Nunito','Poppins',system-ui,sans-serif"}}><div style={{overflowY:"auto",minHeight:"100vh",paddingTop:4,paddingBottom:80}}>{render()}</div><BottomNav tab={sub?"":tab} setTab={goTab}/></div>);
 }
