@@ -492,6 +492,8 @@ function SettingsScreen({tasks,timeChores,randomChores,completedChores,onBack}){
 }
 
 export default function App(){
+  const[splash,setSplash]=useState(true);
+  useEffect(()=>{const t=setTimeout(()=>setSplash(false),2800);return()=>clearTimeout(t);},[]);
   const[tab,setTab]=useState("home");const[sub,setSub]=useState(null);const[editId,setEditId]=useState(null);
   const[tasks,setTasks]=useState(()=>initTasks());const[timeChores,setTimeChores]=useState(()=>initTimeChores());const[randomChores,setRandomChores]=useState(()=>initRandomChores());const[completedChores,setCompletedChores]=useState(()=>initCompletedChores());
   const goTab=useCallback(t=>{setTab(t);setSub(null);},[]);const back=screen=>()=>setSub(screen||null);
@@ -535,5 +537,17 @@ export default function App(){
     if(tab==="progress") return <ProgressScreen tasks={tasks} completedChores={completedChores} setSubScreen={setSub}/>;
     if(tab==="more")     return <MoreTab setSubScreen={setSub}/>;
   };
+  if(splash)return(
+    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",animation:"fadeIn 0.4s ease-in"}}>
+      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes fadeOut{from{opacity:1}to{opacity:0}}.splash-out{animation:fadeOut 0.5s ease-out forwards}`}</style>
+      <img src="/icon-splash.png" alt="ADHD Cleaning" style={{width:140,height:140,borderRadius:32,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",marginBottom:28}}
+        onError={e=>{e.target.style.display="none";}}/>
+      <div style={{fontSize:26,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>
+        {"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}
+      </div>
+      <div style={{fontSize:26,fontWeight:900,color:"#1F2937",letterSpacing:2,marginTop:2}}>CHECKLIST</div>
+      <div style={{display:"flex",gap:14,marginTop:16}}>{DC.map((c,i)=><div key={i} style={{width:10,height:10,borderRadius:"50%",background:c}}/>)}</div>
+    </div>
+  );
   return(<div style={{background:"#F8F9FA",minHeight:"100vh",maxWidth:430,margin:"0 auto",fontFamily:"'Nunito','Poppins',system-ui,sans-serif"}}><div style={{overflowY:"auto",minHeight:"100vh",paddingTop:4,paddingBottom:80}}>{render()}</div><BottomNav tab={sub?"":tab} setTab={goTab}/></div>);
 }
