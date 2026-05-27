@@ -540,7 +540,7 @@ export default function App(){
   if(splash)return(
     <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",animation:"fadeIn 0.4s ease-in"}}>
       <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes fadeOut{from{opacity:1}to{opacity:0}}.splash-out{animation:fadeOut 0.5s ease-out forwards}`}</style>
-      <img src="/icon-splash.png" alt="ADHD Cleaning" style={{width:140,height:140,borderRadius:32,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",marginBottom:28}}
+      <img src="/icon.png" alt="ADHD Cleaning" style={{width:140,height:140,borderRadius:32,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",marginBottom:28}}
         onError={e=>{e.target.style.display="none";}}/>
       <div style={{fontSize:26,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>
         {"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}
