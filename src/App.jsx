@@ -545,7 +545,7 @@ function SettingsScreen({tasks,timeChores,randomChores,completedChores,onBack}){
 function SplashScreen(){
   const[rot,setRot]=useState(0);
   useEffect(()=>{
-    const id=setInterval(()=>setRot(r=>(r+0.2)%360),16);
+    const id=setInterval(()=>setRot(r=>(r+0.08)%360),16);
     return()=>clearInterval(id);
   },[]);
   const rings=[
