@@ -330,7 +330,14 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId}){
     );
   };
 
-  return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",textAlign:"center"}}><div style={{fontSize:30,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"center",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}</div><div style={{fontSize:30,fontWeight:900,color:C.dark,marginBottom:10,letterSpacing:2}}>CHECKLIST</div><div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:4}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div></div>
+  return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+      <div style={{flex:1,textAlign:"center"}}>
+        <div style={{fontSize:30,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"center",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}</div>
+        <div style={{fontSize:30,fontWeight:900,color:C.dark,marginBottom:6,letterSpacing:2}}>CHECKLIST</div>
+        <div style={{display:"flex",justifyContent:"center",gap:16}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
+      </div>
+      <img src="/icon.png" alt="" style={{width:64,height:64,borderRadius:16,boxShadow:"0 2px 10px rgba(0,0,0,0.1)",flexShrink:0}} onError={e=>e.target.style.display="none"}/>
+    </div>
   <div style={{margin:"12px 16px",background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:11,fontWeight:700,color:C.coral,letterSpacing:1,marginBottom:12}}>TODAY'S PROGRESS</div><ProgressBar pct={pct} done={done} total={total} minsDone={minsDone} accent={C.blue} accentEnd="#6ab8c8" pctColor={C.orange} clockColor={C.teal}/></div>
   <div style={{margin:"0 16px 12px"}}>
     <div style={{fontSize:11,fontWeight:700,color:C.dark,letterSpacing:1,marginBottom:10}}>TODAY'S TASKS</div>
