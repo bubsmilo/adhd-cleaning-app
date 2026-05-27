@@ -538,15 +538,15 @@ export default function App(){
     if(tab==="more")     return <MoreTab setSubScreen={setSub}/>;
   };
   if(splash)return(
-    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",animation:"fadeIn 0.4s ease-in"}}>
-      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes fadeOut{from{opacity:1}to{opacity:0}}.splash-out{animation:fadeOut 0.5s ease-out forwards}`}</style>
-      <img src="/icon.png" alt="ADHD Cleaning" style={{width:140,height:140,borderRadius:32,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",marginBottom:28}}
-        onError={e=>{e.target.style.display="none";}}/>
-      <div style={{fontSize:26,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>
-        {"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}
+    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif"}}>
+      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}.splash-content{animation:slideUp 0.5s ease-out}`}</style>
+      <div className="splash-content" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>
+          {"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}
+        </div>
+        <div style={{fontSize:32,fontWeight:900,color:"#1F2937",letterSpacing:2}}>CHECKLIST</div>
+        <div style={{display:"flex",gap:14,marginTop:14}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
       </div>
-      <div style={{fontSize:26,fontWeight:900,color:"#1F2937",letterSpacing:2,marginTop:2}}>CHECKLIST</div>
-      <div style={{display:"flex",gap:14,marginTop:16}}>{DC.map((c,i)=><div key={i} style={{width:10,height:10,borderRadius:"50%",background:c}}/>)}</div>
     </div>
   );
   return(<div style={{background:"#F8F9FA",minHeight:"100vh",maxWidth:430,margin:"0 auto",fontFamily:"'Nunito','Poppins',system-ui,sans-serif"}}><div style={{overflowY:"auto",minHeight:"100vh",paddingTop:4,paddingBottom:80}}>{render()}</div><BottomNav tab={sub?"":tab} setTab={goTab}/></div>);
