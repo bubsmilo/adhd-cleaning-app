@@ -29,17 +29,37 @@ function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]
 function daySort(d){if(!d)return 999;if(d==="Last day")return 32;if(d.startsWith("Day "))return parseInt(d.replace("Day ",""));const i=DAY_ORDER.indexOf(d);return i>=0?i:50;}
 function choreIcon(name){const n=(name||"").toLowerCase();if(/vacuum|hoover|carpet/.test(n))return"🧹";if(/mop|floor|sweep/.test(n))return"🧹";if(/dust|vent|baseboard|blind/.test(n))return"🪣";if(/window|glass/.test(n))return"🪟";if(/toilet|bath|shower|sink|scrub/.test(n))return"🚽";if(/kitchen|counter|stove|oven|microwave|fridge|freezer/.test(n))return"🍳";if(/dish/.test(n))return"🍽️";if(/laundry|iron|fold/.test(n))return"👕";if(/bed|sheet|pillow/.test(n))return"🛏️";if(/trash|recycl|bin|garbage/.test(n))return"🗑️";if(/garden|lawn|mow|weed|outdoor|plant/.test(n))return"🌿";if(/garage|car/.test(n))return"🚗";if(/organiz|declutter|drawer|cupboard|closet/.test(n))return"📦";if(/wipe|clean|sanitiz/.test(n))return"🧽";if(/light|switch/.test(n))return"💡";if(/mirror/.test(n))return"🪞";if(/pet|cat|dog|litter/.test(n))return"🐾";return"🧹";}
 function initChecklist(key,data){
-  const ex=LS.get(key,null);
-  if(ex){
-    // Migrate old format (array of bools) to new format
-    const firstVal=Object.values(ex)[0];
-    if(Array.isArray(firstVal)){
-      const migrated={};
-      Object.keys(data).forEach(s=>{migrated[s]={items:[...data[s].items],checked:(ex[s]||data[s].items.map(()=>false))};});
-      LS.set(key,migrated);return migrated;
+  try{
+    const ex=LS.get(key,null);
+    if(ex){
+      const firstVal=Object.values(ex)[0];
+      // If old format (array of bools), migrate
+      if(Array.isArray(firstVal)){
+        const migrated={};
+        Object.keys(data).forEach(s=>{
+          migrated[s]={items:[...data[s].items],checked:Array.isArray(ex[s])?[...ex[s]]:data[s].items.map(()=>false)};
+          // Pad or trim checked to match items length
+          while(migrated[s].checked.length<migrated[s].items.length)migrated[s].checked.push(false);
+          migrated[s].checked=migrated[s].checked.slice(0,migrated[s].items.length);
+        });
+        LS.set(key,migrated);return migrated;
+      }
+      // New format - ensure all sections exist and are valid
+      const valid={};
+      Object.keys(data).forEach(s=>{
+        const sec=ex[s];
+        if(sec&&Array.isArray(sec.items)&&Array.isArray(sec.checked)){
+          // Ensure checked matches items length
+          const checked=[...sec.checked];
+          while(checked.length<sec.items.length)checked.push(false);
+          valid[s]={items:[...sec.items],checked:checked.slice(0,sec.items.length)};
+        }else{
+          valid[s]={items:[...data[s].items],checked:data[s].items.map(()=>false)};
+        }
+      });
+      LS.set(key,valid);return valid;
     }
-    return ex;
-  }
+  }catch(e){}
   const state={};
   Object.keys(data).forEach(s=>{state[s]={items:[...data[s].items],checked:data[s].items.map(()=>false)};});
   LS.set(key,state);return state;
@@ -516,6 +536,33 @@ function SettingsScreen({tasks,timeChores,randomChores,completedChores,onBack}){
   );
 }
 
+function SplashScreen(){
+  const[rot,setRot]=useState(0);
+  useEffect(()=>{
+    const id=setInterval(()=>setRot(r=>(r+1)%360),16);
+    return()=>clearInterval(id);
+  },[]);
+  const rings=[
+    {size:380,color:"#F39A3D",speed:1,dir:1},
+    {size:300,color:"#4CAF8A",speed:1.33,dir:-1},
+    {size:220,color:"#E85B6A",speed:1.71,dir:1},
+    {size:140,color:"#8ECAD0",speed:2.4,dir:-1},
+  ];
+  return(
+    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",gap:20,position:"relative",overflow:"hidden"}}>
+      {rings.map((r,i)=>(
+        <div key={i} style={{position:"absolute",width:r.size,height:r.size,borderRadius:"50%",border:`3px dashed ${r.color}50`,top:"50%",left:"50%",marginTop:-r.size/2,marginLeft:-r.size/2,transform:`rotate(${rot*r.speed*r.dir}deg)`,willChange:"transform"}}/>
+      ))}
+      <img src="/icon.png" alt="" style={{width:150,height:150,objectFit:"contain",border:"none",background:"transparent",position:"relative",zIndex:2}} onError={e=>e.target.style.display="none"}/>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,position:"relative",zIndex:2}}>
+        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}</div>
+        <div style={{fontSize:32,fontWeight:900,color:"#1F2937",letterSpacing:2}}>CHECKLIST</div>
+        <div style={{display:"flex",gap:14,marginTop:10}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   const[splash,setSplash]=useState(true);
   useEffect(()=>{const t=setTimeout(()=>setSplash(false),2800);return()=>clearTimeout(t);},[]);
@@ -562,56 +609,6 @@ export default function App(){
     if(tab==="progress") return <ProgressScreen tasks={tasks} completedChores={completedChores} setSubScreen={setSub}/>;
     if(tab==="more")     return <MoreTab setSubScreen={setSub}/>;
   };
-  if(splash)return(
-    <div style={{background:"#ffffff",minHeight:"100vh",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Poppins',system-ui,sans-serif",gap:20,position:"relative",overflow:"hidden"}}>
-      <style dangerouslySetInnerHTML={{__html:`
-        @keyframes splashSpin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
-        @keyframes splashSpinR{from{transform:translate(-50%,-50%) rotate(360deg)}to{transform:translate(-50%,-50%) rotate(0deg)}}
-        @keyframes splashUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        .ring1{position:absolute;width:380px;height:380px;border-radius:50%;border:3px dashed #F39A3D40;top:50%;left:50%;animation:splashSpin 12s linear infinite}
-        .ring2{position:absolute;width:300px;height:300px;border-radius:50%;border:3px dashed #4CAF8A40;top:50%;left:50%;animation:splashSpinR 9s linear infinite}
-        .ring3{position:absolute;width:220px;height:220px;border-radius:50%;border:3px dashed #E85B6A40;top:50%;left:50%;animation:splashSpin 7s linear infinite}
-        .ring4{position:absolute;width:140px;height:140px;border-radius:50%;border:3px dashed #8ECAD040;top:50%;left:50%;animation:splashSpinR 5s linear infinite}
-        .splash-up{animation:splashUp 0.6s ease-out both}
-        .splash-up2{animation:splashUp 0.7s ease-out both}
-      `}}/>
-      <div className="ring1"/><div className="ring2"/><div className="ring3"/><div className="ring4"/>
-      <img src="/icon.png" alt="" className="splash-up" style={{width:150,height:150,objectFit:"contain",border:"none",background:"transparent",position:"relative",zIndex:2}} onError={e=>e.target.style.display="none"}/>
-      <div className="splash-up2" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,position:"relative",zIndex:2}}>
-        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}</div>
-        <div style={{fontSize:32,fontWeight:900,color:"#1F2937",letterSpacing:2}}>CHECKLIST</div>
-        <div style={{display:"flex",gap:14,marginTop:10}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
-      </div>
-    </div>
-  );
-  
-  const[tab,setTab]=useState("home");const[sub,setSub]=useState(null);const[editId,setEditId]=useState(null);
-  const[tasks,setTasks]=useState(()=>initTasks());const[timeChores,setTimeChores]=useState(()=>initTimeChores());const[randomChores,setRandomChores]=useState(()=>initRandomChores());const[completedChores,setCompletedChores]=useState(()=>initCompletedChores());
-  const goTab=useCallback(t=>{setTab(t);setSub(null);},[]);const back=screen=>()=>setSub(screen||null);
-  const render=()=>{
-    if(sub==="addTask")         return <AddTaskScreen tasks={tasks} setTasks={setTasks} onBack={back()}/>;
-    if(sub==="editTask")        return <EditTaskScreen tasks={tasks} setTasks={setTasks} taskId={editId} onBack={back()}/>;
-    if(sub==="haveTime")        return <HaveTimeScreen timeChores={timeChores} setTimeChores={setTimeChores} setSubScreen={setSub} onBack={back()}/>;
-    if(sub==="myTimeChores")    return <MyTimeChoresScreen timeChores={timeChores} setTimeChores={setTimeChores} setSubScreen={setSub} onBack={back("haveTime")}/>;
-    if(sub==="addTimeChore")    return <AddTimeChoreScreen timeChores={timeChores} setTimeChores={setTimeChores} onBack={back("myTimeChores")}/>;
-    if(sub==="randomChore")     return <RandomChoreScreen randomChores={randomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} onBack={back()}/>;
-    if(sub==="myRandomChores")  return <MyRandomChoresScreen randomChores={randomChores} setRandomChores={setRandomChores} setSubScreen={setSub} onBack={back()}/>;
-    if(sub==="addRandomChore")  return <AddRandomChoreScreen randomChores={randomChores} setRandomChores={setRandomChores} onBack={back("myRandomChores")}/>;
-    if(sub==="completedChores") return <CompletedRandomChoresScreen completedChores={completedChores} onBack={back()}/>;
-    if(sub==="speedClean")      return <SpeedCleanTab setSubScreen={setSub} onBack={back("more")}/>;
-    if(sub==="speedCleanTime")  return <ChecklistScreen title="By Time" color={C.teal} data={SPEED_CLEAN_TIME_DATA} storageKey="speedCleanTime" onBack={back("speedClean")}/>;
-    if(sub==="speedCleanRoom")  return <ChecklistScreen title="Room by Room" color={C.orange} data={SPEED_CLEAN_ROOM_DATA} storageKey="speedCleanRoom" onBack={back("speedClean")}/>;
-    if(sub==="quarterly")       return <ChecklistScreen title="Quarterly" color="#E07820" data={QUARTERLY_DATA} storageKey="quarterly" onBack={back("more")}/>;
-    if(sub==="deepClean")       return <ChecklistScreen title="Deep Clean" color={C.orange} data={DEEP_CLEAN_DATA} storageKey="deepClean" onBack={back("more")}/>;
-    if(sub==="declutter")       return <ChecklistScreen title="Declutter" color={C.coral} data={DECLUTTER_DATA} storageKey="declutter" onBack={back("more")}/>;
-    if(sub==="seasonal")        return <ChecklistScreen title="Seasonal" color={C.teal} data={SEASONAL_DATA} storageKey="seasonal" onBack={back("more")}/>;
-    if(sub==="yearly")          return <ChecklistScreen title="Yearly Schedule" color={C.orange} data={YEARLY_DATA} storageKey="yearly" onBack={back("more")}/>;
-    if(sub==="settings")        return <SettingsScreen tasks={tasks} timeChores={timeChores} randomChores={randomChores} completedChores={completedChores} onBack={back(tab==="more"?"more":null)}/>;
-    if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
-    if(tab==="tasks")    return <TasksScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
-    if(tab==="random")   return <RandomTab randomChores={randomChores} setRandomChores={setRandomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} setSubScreen={setSub}/>;
-    if(tab==="progress") return <ProgressScreen tasks={tasks} completedChores={completedChores} setSubScreen={setSub}/>;
-    if(tab==="more")     return <MoreTab setSubScreen={setSub}/>;
-  };
+  if(splash)return(<SplashScreen/>);
   return(<div style={{background:"#F8F9FA",minHeight:"100vh",maxWidth:430,margin:"0 auto",fontFamily:"'Nunito','Poppins',system-ui,sans-serif"}}><div style={{overflowY:"auto",minHeight:"100vh",paddingTop:4,paddingBottom:80}}>{render()}</div><BottomNav tab={sub?"":tab} setTab={goTab}/></div>);
 }
