@@ -311,7 +311,7 @@ function TaskRow({task,onToggle,onEdit,showDay,isLast}){const col=RC[task.room]|
   return(<div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:isLast?"":`1px solid ${C.border}`,opacity:task.completed?0.45:1}}><CBx checked={task.completed} onToggle={onToggle}/><div style={{flex:1,cursor:"pointer"}} onClick={onToggle}><div style={{fontSize:14,fontWeight:600,color:C.dark,textDecoration:task.completed?"line-through":"none"}}>{task.taskName}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>{task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:`${col}20`,padding:"2px 7px",borderRadius:20}}>{task.room}</span>}{dayLabel&&<span style={{fontSize:10,fontWeight:700,color:C.teal,background:"#E8F7F2",padding:"2px 7px",borderRadius:20}}>{dayLabel}</span>}{dateLabel&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{dateLabel}</span>}{task.months&&task.months!=="every"&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{task.months.slice(0,3)}</span>}</div></div><div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12,marginRight:4}}>{Ic.clock()}<span>{task.minutes}m</span></div><button type="button" onClick={e=>{e.stopPropagation();onEdit();}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button></div>);
 }
 
-function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
+function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTab}){
   const now=new Date();
   const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][now.getDay()];
   const dateNum=now.getDate();
@@ -338,30 +338,22 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
   const pendingMins=allToday.filter(t=>!t.completed).reduce((a,t)=>a+t.minutes,0);
   const[animating,setAnimating]=useState({});
   const toggle=id=>{
-    const task=tasks.find(t=>t.id===id);
-    if(task&&!task.completed){
-      setAnimating(prev=>({...prev,[id]:true}));
-      setTimeout(()=>{
-        const u=tasks.map(t=>t.id===id?{...t,completed:true}:t);
-        setTasks(u);LS.set("tasks",u);
-        setAnimating(prev=>{const n={...prev};delete n[id];return n;});
-      },350);
-    } else {
-      const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);
-      setTasks(u);LS.set("tasks",u);
-    }
+    setAnimating(prev=>({...prev,[id]:"pop"}));
+    setTimeout(()=>{setAnimating(prev=>{const n={...prev};delete n[id];return n;});},280);
+    const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);
+    setTasks(u);LS.set("tasks",u);
+    const td=new Date().toISOString().split("T")[0];
+    const dates=LS.get("completedDates",[]);
+    if(!dates.includes(td)){LS.set("completedDates",[...dates,td]);}
   };
+  const completedDates=LS.get("completedDates",[]);
   let streak=0;
-  for(let si=0;si<7;si++){
-    const hadDone=tasks.some(t=>t.completed);
-    if(hadDone)streak++;else break;
+  for(let si=0;si<365;si++){
+    const d=new Date(Date.now()-si*86400000).toISOString().split("T")[0];
+    if(completedDates.includes(d)){streak++;}else if(si>0){break;}
   }
   const weekDays=["M","T","W","T","F","S","S"];
-  const sorted=[
-    ...allToday.filter(t=>!t.completed&&!animating[t.id]),
-    ...allToday.filter(t=>animating[t.id]),
-    ...allToday.filter(t=>t.completed&&!animating[t.id])
-  ];
+  const sorted=allToday;
   const dailyDone=tasks.filter(t=>t.category==="Daily"&&t.completed).length;
   const dailyTotal=Math.max(tasks.filter(t=>t.category==="Daily").length,1);
   const weeklyDone=tasks.filter(t=>t.category==="Weekly"&&t.completed).length;
@@ -387,10 +379,10 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
         </div>
       </div>
       <div style={{margin:"12px 16px",background:"#E8F7F2",borderRadius:20,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.teal,letterSpacing:1,marginBottom:10}}>TODAY'S PROGRESS</div>
+        <div style={{fontSize:13,fontWeight:800,color:C.teal,letterSpacing:0.5,marginBottom:10}}>TODAY'S PROGRESS</div>
         <div style={{display:"flex",alignItems:"flex-end",gap:12,marginBottom:10}}>
           <div>
-            <div style={{fontSize:44,fontWeight:900,color:C.dark,lineHeight:1}}>{pct}<span style={{fontSize:24}}>%</span></div>
+            <div style={{fontSize:36,fontWeight:900,color:"#4B5563",lineHeight:1}}>{pct}<span style={{fontSize:20}}>%</span></div>
             <div style={{fontSize:13,color:C.greyText,marginTop:4}}>{done} of {total} tasks done</div>
           </div>
           <div style={{flex:1}}>
@@ -413,8 +405,13 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
             const col=RC[task.room]||C.greyText;
             const emoji=ROOM_EMOJI[task.room]||"🧹";
             return(
-              <div key={task.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:ti<sorted.length-1?("1px solid "+C.border):"none",transition:"all 0.35s ease",opacity:animating[task.id]?0.3:1}}>
-                <div onClick={()=>toggle(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(task.completed?C.teal:C.border),background:task.completed?C.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div key={task.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:ti<sorted.length-1?("1px solid "+C.border):"none",
+                transition:"transform 0.14s ease-out, box-shadow 0.14s ease-out",
+                transform:animating[task.id]==="pop"?"scale(1.04)":"scale(1)",
+                boxShadow:animating[task.id]==="pop"?"0 6px 20px rgba(0,0,0,0.13)":"none",
+                borderRadius:8,position:"relative",zIndex:animating[task.id]==="pop"?2:0,
+                background:C.white}}>
+                <div onClick={()=>toggle(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(task.completed?DC[ti%DC.length]:C.border),background:task.completed?DC[ti%DC.length]:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {task.completed&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
                 <div style={{width:38,height:38,borderRadius:10,background:col+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{emoji}</div>
@@ -427,8 +424,8 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
               </div>
             );
           })}
-          {total>0&&<button type="button" onClick={()=>setSubScreen("tasks")} style={{width:"100%",background:"none",border:"none",borderTop:"1px solid "+C.border,padding:"12px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:C.teal,fontSize:13,fontWeight:700}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          {total>0&&<button type="button" onClick={()=>setTab("tasks")} style={{width:"100%",background:"none",border:"none",borderTop:"1px solid "+C.border,padding:"12px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:C.coral,fontSize:13,fontWeight:700}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.coral} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             View All Tasks
           </button>}
         </div>
@@ -469,14 +466,17 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
             </div>
           </div>
           <div style={{display:"flex",gap:4,justifyContent:"space-between"}}>
-            {weekDays.map((d,wi)=>(
+            {weekDays.map((d,wi)=>{
+              const gc=[C.teal,"#52B882","#65C075","#7CC965","#94D054","#ABD644","#C2DA34"];
+              return(
               <div key={wi} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
                 <div style={{fontSize:8,color:C.greyText,fontWeight:700}}>{d}</div>
-                <div style={{width:20,height:20,borderRadius:"50%",background:wi<streak?C.teal:C.border,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:wi<streak?gc[wi]:C.border,display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {wi<streak&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         <div style={{flex:1,background:"#F5FAFF",borderRadius:20,padding:"16px 14px",border:"1px solid #D8EEFF"}}>
@@ -766,7 +766,7 @@ export default function App(){
     if(sub==="seasonal")        return <ChecklistScreen title="Seasonal" color={C.teal} data={SEASONAL_DATA} storageKey="seasonal" onBack={back("more")}/>;
     if(sub==="yearly")          return <ChecklistScreen title="Yearly Schedule" color={C.orange} data={YEARLY_DATA} storageKey="yearly" onBack={back("more")}/>;
     if(sub==="settings")        return <SettingsScreen tasks={tasks} timeChores={timeChores} randomChores={randomChores} completedChores={completedChores} onBack={back(tab==="more"?"more":null)}/>;
-    if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId} completedChores={completedChores}/>;
+    if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId} completedChores={completedChores} setTab={goTab}/>;
     if(tab==="tasks")    return <TasksScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
     if(tab==="random")   return <RandomTab randomChores={randomChores} setRandomChores={setRandomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} setSubScreen={setSub}/>;
     if(tab==="progress") return <ProgressScreen tasks={tasks} completedChores={completedChores} setSubScreen={setSub}/>;
