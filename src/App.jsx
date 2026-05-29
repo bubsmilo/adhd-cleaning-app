@@ -319,16 +319,15 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
   const isLastDay=dateNum===lastDayNum;
   const curMonth=MONTHS_FULL[now.getMonth()];
   const ROOM_EMOJI={Kitchen:"🍳","Living Room":"🛋️",Bathroom:"🚿",Bedroom:"🛏️",Upstairs:"🏠",Downstairs:"🏚️",Garage:"🚗",Outdoor:"🌿",General:"🧹"};
-  const MOTIVES=["Keep going! You're making great progress.","One task at a time — you've got this!","Small steps lead to big results!","You're building great habits!","Progress not perfection!"];
+  const MOTIVES=["Keep going, you are making great progress!","One task at a time, you've got this!","Small steps lead to big results!","You are building great habits!","Progress not perfection!"];
   const[motiveIdx]=useState(()=>Math.floor(Math.random()*MOTIVES.length));
-
   const dailyTasks=tasks.filter(t=>t.category==="Daily"&&t.day==="Today");
   const weeklyTasks=tasks.filter(t=>t.category==="Weekly"&&t.day===DOW);
   const monthlyTasks=tasks.filter(t=>{
     if(t.category!=="Monthly")return false;
     const monthOk=t.months===curMonth||t.months==="every";
     if(!monthOk)return false;
-    if(t.day===`Day ${dateNum}`)return true;
+    if(t.day===("Day "+dateNum))return true;
     if(t.day==="Last day"&&isLastDay)return true;
     return false;
   });
@@ -338,7 +337,6 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
   const pct=total?Math.round((done/total)*100):0;
   const pendingMins=allToday.filter(t=>!t.completed).reduce((a,t)=>a+t.minutes,0);
   const[animating,setAnimating]=useState({});
-
   const toggle=id=>{
     const task=tasks.find(t=>t.id===id);
     if(task&&!task.completed){
@@ -349,153 +347,179 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores}){
         setAnimating(prev=>{const n={...prev};delete n[id];return n;});
       },350);
     } else {
-      const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);setTasks(u);LS.set("tasks",u);
+      const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);
+      setTasks(u);LS.set("tasks",u);
     }
   };
-
-  // Streak calc
-  const today=new Date().toISOString().split("T")[0];
   let streak=0;
-  for(let i=0;i<30;i++){const d=new Date(Date.now()-i*86400000).toISOString().split("T")[0];const hadDone=tasks.some(t=>t.completed);if(i===0&&hadDone)streak++;else if(i>0&&hadDone)streak++;else break;}
+  for(let si=0;si<7;si++){
+    const hadDone=tasks.some(t=>t.completed);
+    if(hadDone)streak++;else break;
+  }
   const weekDays=["M","T","W","T","F","S","S"];
+  const sorted=[
+    ...allToday.filter(t=>!t.completed&&!animating[t.id]),
+    ...allToday.filter(t=>animating[t.id]),
+    ...allToday.filter(t=>t.completed&&!animating[t.id])
+  ];
+  const dailyDone=tasks.filter(t=>t.category==="Daily"&&t.completed).length;
+  const dailyTotal=Math.max(tasks.filter(t=>t.category==="Daily").length,1);
+  const weeklyDone=tasks.filter(t=>t.category==="Weekly"&&t.completed).length;
+  const weeklyTotal=Math.max(tasks.filter(t=>t.category==="Weekly").length,1);
+  const choreDone=(completedChores||[]).length;
+  const choreTotal=Math.max(choreDone,12);
 
-  const sorted=[...allToday.filter(t=>!t.completed&&!animating[t.id]),...allToday.filter(t=>animating[t.id]),...allToday.filter(t=>t.completed&&!animating[t.id])];
-
-  return(<div style={{paddingBottom:80}}>
-    {/* HEADER - unchanged */}
-    <div style={{padding:"20px 20px 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
-      <img src="/icon.png" alt="" style={{width:108,height:108,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
-      <div style={{flex:1,textAlign:"left"}}>
-        <div style={{fontSize:22,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"flex-start",flexWrap:"wrap",gap:1}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:8}}/>, ...b])}</div>
-        <div style={{fontSize:22,fontWeight:900,color:C.dark,marginBottom:4,letterSpacing:2}}>CHECKLIST</div>
-        <div style={{fontSize:12,color:C.greyText,fontWeight:500,marginBottom:8,letterSpacing:0.5}}>Clean home. Calm mind.</div>
-        <div style={{display:"flex",justifyContent:"flex-start",gap:16}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
-      </div>
-    </div>
-
-    {/* PROGRESS CARD */}
-    <div style={{margin:"12px 16px",background:"#E8F7F2",borderRadius:20,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
-      <div style={{fontSize:11,fontWeight:700,color:C.teal,letterSpacing:1,marginBottom:10}}>TODAY'S PROGRESS</div>
-      <div style={{display:"flex",alignItems:"flex-end",gap:12,marginBottom:10}}>
-        <div>
-          <div style={{fontSize:44,fontWeight:900,color:C.dark,lineHeight:1}}>{pct}<span style={{fontSize:24}}>%</span></div>
-          <div style={{fontSize:13,color:C.greyText,marginTop:4}}>{done} of {total} tasks done</div>
-        </div>
-        <div style={{flex:1}}>
-          <div style={{height:12,background:"#C6EDD9",borderRadius:6,overflow:"hidden",marginBottom:8}}>
-            <div style={{height:"100%",width:`${pct}%`,background:C.teal,borderRadius:6,transition:"width 0.5s"}}/>
+  return(
+    <div style={{paddingBottom:80}}>
+      <div style={{padding:"20px 20px 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+        <img src="/icon.png" alt="" style={{width:108,height:108,flexShrink:0,objectFit:"contain",border:"none",background:"transparent"}} onError={e=>e.target.style.display="none"}/>
+        <div style={{flex:1,textAlign:"left"}}>
+          <div style={{fontSize:22,fontWeight:900,letterSpacing:2,marginBottom:2,display:"flex",justifyContent:"flex-start",flexWrap:"wrap",gap:1}}>
+            {["ADHD","CLEANING"].map((word,wi)=>(
+              <span key={wi} style={{display:"flex",gap:1,marginRight:wi===0?8:0}}>
+                {word.split("").map((ch,ci)=><span key={ci} style={{color:DC[(wi*4+ci)%DC.length]}}>{ch}</span>)}
+              </span>
+            ))}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:C.greyText}}>{Ic.clock(C.teal)}<span>{MOTIVES[motiveIdx]}</span></div>
+          <div style={{fontSize:22,fontWeight:900,color:C.dark,marginBottom:4,letterSpacing:2}}>CHECKLIST</div>
+          <div style={{fontSize:12,color:C.greyText,fontWeight:500,marginBottom:8,letterSpacing:0.5}}>Clean home. Calm mind.</div>
+          <div style={{display:"flex",justifyContent:"flex-start",gap:16}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
         </div>
       </div>
-      <div style={{position:"absolute",right:16,top:12,fontSize:40,opacity:0.7}}>🌿</div>
-    </div>
-
-    {/* TODAY'S PLAN */}
-    <div style={{margin:"12px 16px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <span style={{fontSize:15,fontWeight:800,color:C.dark}}>TODAY'S PLAN</span>
-        <span style={{fontSize:12,fontWeight:700,color:C.teal}}>{done} of {total} tasks completed</span>
+      <div style={{margin:"12px 16px",background:"#E8F7F2",borderRadius:20,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.teal,letterSpacing:1,marginBottom:10}}>TODAY'S PROGRESS</div>
+        <div style={{display:"flex",alignItems:"flex-end",gap:12,marginBottom:10}}>
+          <div>
+            <div style={{fontSize:44,fontWeight:900,color:C.dark,lineHeight:1}}>{pct}<span style={{fontSize:24}}>%</span></div>
+            <div style={{fontSize:13,color:C.greyText,marginTop:4}}>{done} of {total} tasks done</div>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{height:12,background:"#C6EDD9",borderRadius:6,overflow:"hidden",marginBottom:8}}>
+              <div style={{height:"100%",width:pct+"%",background:C.teal,borderRadius:6,transition:"width 0.5s"}}/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:C.greyText}}>{Ic.clock(C.teal)}<span>{MOTIVES[motiveIdx]}</span></div>
+          </div>
+        </div>
+        <div style={{position:"absolute",right:16,top:12,fontSize:40,opacity:0.7}}>🌿</div>
       </div>
-      <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-        {total===0?<div style={{padding:"24px 16px",textAlign:"center",color:C.greyText,fontSize:14}}>No tasks today. Add one!</div>:
-          sorted.map((task,i)=>{
+      <div style={{margin:"12px 16px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <span style={{fontSize:15,fontWeight:800,color:C.dark}}>TODAY'S PLAN</span>
+          <span style={{fontSize:12,fontWeight:700,color:C.teal}}>{done} of {total} tasks completed</span>
+        </div>
+        <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 12px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+          {total===0&&<div style={{padding:"24px 16px",textAlign:"center",color:C.greyText,fontSize:14}}>No tasks today. Add one!</div>}
+          {sorted.map((task,ti)=>{
             const col=RC[task.room]||C.greyText;
             const emoji=ROOM_EMOJI[task.room]||"🧹";
             return(
-              <div key={task.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:i<sorted.length-1?`1px solid ${C.border}`:"none",transition:"all 0.35s ease",transform:animating[task.id]?"translateY(8px)":"translateY(0)",opacity:animating[task.id]?0.3:1}}>
-                <div onClick={()=>toggle(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:`2px solid ${task.completed?C.teal:C.border}`,background:task.completed?C.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div key={task.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:ti<sorted.length-1?("1px solid "+C.border):"none",transition:"all 0.35s ease",opacity:animating[task.id]?0.3:1}}>
+                <div onClick={()=>toggle(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(task.completed?C.teal:C.border),background:task.completed?C.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {task.completed&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
-                <div style={{width:38,height:38,borderRadius:10,background:`${col}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{emoji}</div>
+                <div style={{width:38,height:38,borderRadius:10,background:col+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{emoji}</div>
                 <div style={{flex:1,cursor:"pointer"}} onClick={()=>toggle(task.id)}>
                   <div style={{fontSize:14,fontWeight:700,color:C.dark,textDecoration:task.completed?"line-through":"none",opacity:task.completed?0.5:1}}>{task.taskName}</div>
-                  {task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:`${col}20`,padding:"2px 8px",borderRadius:20,marginTop:3,display:"inline-block"}}>{task.room}</span>}
+                  {task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:col+"20",padding:"2px 8px",borderRadius:20,marginTop:3,display:"inline-block"}}>{task.room}</span>}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12}}>{Ic.clock()}<span>{task.minutes}m</span></div>
                 <button type="button" onClick={e=>{e.stopPropagation();setEditId(task.id);setSubScreen("editTask");}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button>
               </div>
             );
-          })
-        }
-        {total>0&&<button type="button" onClick={()=>setSubScreen("tasks")} style={{width:"100%",background:"none",border:"none",borderTop:`1px solid ${C.border}`,padding:"12px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:C.teal,fontSize:13,fontWeight:700}}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          View All Tasks
-        </button>}
+          })}
+          {total>0&&<button type="button" onClick={()=>setSubScreen("tasks")} style={{width:"100%",background:"none",border:"none",borderTop:"1px solid "+C.border,padding:"12px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:C.teal,fontSize:13,fontWeight:700}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            View All Tasks
+          </button>}
+        </div>
       </div>
-    </div>
-
-    {/* TODAY'S FOCUS */}
-    <div style={{margin:"0 16px 12px",background:"#FFFBE0",borderRadius:20,padding:"16px 18px"}}>
-      <div style={{fontSize:11,fontWeight:700,color:C.orange,letterSpacing:1,marginBottom:10}}>TODAY'S FOCUS</div>
-      <div style={{display:"flex",gap:14,alignItems:"center"}}>
-        <div style={{fontSize:44,flexShrink:0}}>🎯</div>
+      <div style={{margin:"0 16px 12px",background:"#FFFBE0",borderRadius:20,padding:"16px 18px"}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.orange,letterSpacing:1,marginBottom:10}}>TODAY'S FOCUS</div>
+        <div style={{display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{fontSize:44,flexShrink:0}}>🎯</div>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.dark,marginBottom:4}}>{Ic.clock(C.greyText)}<span>{pendingMins} minutes</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.dark,marginBottom:4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>{total-done} tasks remaining</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.dark}}><span>⭐</span><span>Most important first</span></div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+            <button type="button" onClick={()=>setSubScreen("haveTime")} style={{background:C.orange,border:"none",borderRadius:16,padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white,display:"flex",alignItems:"center",gap:6}}>✦ Start Session</button>
+            <div style={{fontSize:11,color:C.greyText,textAlign:"right"}}>Guided cleaning.</div>
+          </div>
+        </div>
+      </div>
+      <div style={{margin:"0 16px 12px"}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.dark,letterSpacing:1,marginBottom:10}}>QUICK ACTIONS</div>
+        <div style={{display:"flex",gap:10}}>
+          <button type="button" onClick={()=>setSubScreen("haveTime")} style={{flex:1,background:"#E8F7F2",border:"2.5px solid #A8D9C8",borderRadius:20,padding:"18px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style={{fontSize:13,fontWeight:700,color:C.teal}}>I Have Time</div></button>
+          <button type="button" onClick={()=>setSubScreen("randomChore")} style={{flex:1,background:"#FEF3E2",border:"2.5px solid #F0C888",borderRadius:20,padding:"18px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><DiceSvg size={38} color={C.orange}/><div style={{fontSize:13,fontWeight:700,color:C.orange}}>Random Chore</div><div style={{fontSize:10,color:C.greyText,textAlign:"center",lineHeight:1.3}}>Can't decide?<br/>We'll pick for you</div></button>
+          <button type="button" onClick={()=>setSubScreen("addTask")} style={{flex:1,background:"#FDEEF1",border:"2.5px solid #F0A8B8",borderRadius:20,padding:"18px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={C.coral} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style={{fontSize:13,fontWeight:700,color:C.coral}}>Add Task</div><div style={{fontSize:10,color:C.greyText,textAlign:"center",lineHeight:1.3}}>Create your<br/>own task</div></button>
+        </div>
+      </div>
+      <div style={{margin:"0 16px 10px",display:"flex",gap:10}}>
+        <div style={{flex:1,background:"#FFF8F0",borderRadius:20,padding:"14px",border:"1px solid #FFE0A0"}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.orange,letterSpacing:1,marginBottom:8}}>CURRENT STREAK</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <span style={{fontSize:28}}>🔥</span>
+            <div style={{display:"flex",flexDirection:"column"}}>
+              <div style={{fontSize:22,fontWeight:900,color:C.dark}}>{streak}<span style={{fontSize:14}}> days</span></div>
+              <div style={{fontSize:11,color:C.greyText,marginTop:2}}>
+                {streak===0?"Start your streak today!":streak===1?"Great start!":streak<=3?"Building momentum!":streak<=5?"You're on a roll!":streak<=7?"You're on fire! 🔥":streak<=13?"Amazing dedication!":"Unstoppable! 🌟"}
+              </div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:4,justifyContent:"space-between"}}>
+            {weekDays.map((d,wi)=>(
+              <div key={wi} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <div style={{fontSize:8,color:C.greyText,fontWeight:700}}>{d}</div>
+                <div style={{width:20,height:20,borderRadius:"50%",background:wi<streak?C.teal:C.border,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {wi<streak&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{flex:1,background:"#F5FAFF",borderRadius:20,padding:"16px 14px",border:"1px solid #D8EEFF"}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.blue,letterSpacing:1,marginBottom:12}}>THIS MONTH</div>
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <span style={{fontSize:11,fontWeight:500,color:C.dark}}>Daily Tasks</span>
+              <span style={{fontSize:11,fontWeight:700,color:C.dark}}>{dailyDone} / {dailyTotal}</span>
+            </div>
+            <div style={{height:10,background:C.grey,borderRadius:6,overflow:"hidden"}}>
+              <div style={{height:"100%",width:Math.min(100,Math.round(dailyDone/dailyTotal*100))+"%",background:C.teal,borderRadius:6,transition:"width 0.4s"}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <span style={{fontSize:11,fontWeight:500,color:C.dark}}>Weekly Tasks</span>
+              <span style={{fontSize:11,fontWeight:700,color:C.dark}}>{weeklyDone} / {weeklyTotal}</span>
+            </div>
+            <div style={{height:10,background:C.grey,borderRadius:6,overflow:"hidden"}}>
+              <div style={{height:"100%",width:Math.min(100,Math.round(weeklyDone/weeklyTotal*100))+"%",background:C.orange,borderRadius:6,transition:"width 0.4s"}}/>
+            </div>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <span style={{fontSize:11,fontWeight:500,color:C.dark}}>Random Chores</span>
+              <span style={{fontSize:11,fontWeight:700,color:C.dark}}>{choreDone} / {choreTotal}</span>
+            </div>
+            <div style={{height:10,background:C.grey,borderRadius:6,overflow:"hidden"}}>
+              <div style={{height:"100%",width:Math.min(100,Math.round(choreDone/choreTotal*100))+"%",background:C.coral,borderRadius:6,transition:"width 0.4s"}}/>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{margin:"0 16px 12px",background:"#F4FBF7",borderRadius:20,padding:"14px 18px",border:"1px solid #C8EDD9",display:"flex",alignItems:"center",gap:14}}>
+        <span style={{fontSize:28,flexShrink:0}}>💚</span>
         <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.dark,marginBottom:4}}>{Ic.clock(C.greyText)}<span>{pendingMins} minutes</span></div>
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.dark,marginBottom:4}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            <span>{total-done} tasks remaining</span>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:C.dark}}>⭐<span>Most important first</span></div>
+                    <div style={{fontSize:14,fontWeight:800,color:C.teal,marginBottom:3}}>Small steps. Big difference.</div>
+          <div style={{fontSize:12,color:C.greyText}}>Every task you complete is a win!</div>
         </div>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-          <button type="button" onClick={()=>setSubScreen("haveTime")} style={{background:C.orange,border:"none",borderRadius:16,padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white,display:"flex",alignItems:"center",gap:6}}>✦ Start Session</button>
-          <div style={{fontSize:11,color:C.greyText,textAlign:"right"}}>Guided cleaning.</div>
-        </div>
+        <span style={{fontSize:28,flexShrink:0}}>🌵</span>
       </div>
     </div>
-
-    {/* QUICK ACTIONS */}
-    <div style={{margin:"0 16px 12px"}}><div style={{fontSize:11,fontWeight:700,color:C.dark,letterSpacing:1,marginBottom:10}}>QUICK ACTIONS</div><div style={{display:"flex",gap:10}}><button type="button" onClick={()=>setSubScreen("haveTime")} style={{flex:1,background:"#E8F7F2",border:"2.5px solid #A8D9C8",borderRadius:20,padding:"18px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style={{fontSize:13,fontWeight:700,color:C.teal}}>I Have Time</div></button><button type="button" onClick={()=>setSubScreen("randomChore")} style={{flex:1,background:"#FEF3E2",border:"2.5px solid #F0C888",borderRadius:20,padding:"18px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><DiceSvg size={38} color={C.orange}/><div style={{fontSize:13,fontWeight:700,color:C.orange}}>Random Chore</div><div style={{fontSize:10,color:C.greyText,textAlign:"center"}}>Can't decide? We'll pick for you</div></button><button type="button" onClick={()=>setSubScreen("addTask")} style={{flex:1,background:"#FDEEF1",border:"2.5px solid #F0A8B8",borderRadius:20,padding:"18px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={C.coral} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style={{fontSize:13,fontWeight:700,color:C.coral}}>Add Task</div><div style={{fontSize:10,color:C.greyText,textAlign:"center",lineHeight:1.3}}>Create your<br/>own task</div></button></div></div>
-
-    {/* STREAK + THIS MONTH */}
-    <div style={{margin:"0 16px 10px",display:"flex",gap:10}}>
-      <div style={{flex:1,background:"#FFF8F0",borderRadius:20,padding:"14px",border:"1px solid #FFE0A0"}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.orange,letterSpacing:1,marginBottom:8}}>CURRENT STREAK</div>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <span style={{fontSize:28}}>🔥</span>
-          <div><div style={{fontSize:22,fontWeight:900,color:C.dark}}>{streak} <span style={{fontSize:14}}>days</span></div></div>
-        </div>
-        <div style={{display:"flex",gap:4,justifyContent:"space-between"}}>
-          {weekDays.map((d,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-            <div style={{fontSize:8,color:C.greyText,fontWeight:700}}>{d}</div>
-            <div style={{width:20,height:20,borderRadius:"50%",background:i<streak?C.teal:C.border,display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {i<streak&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-            </div>
-          </div>)}
-        </div>
-      </div>
-      <div style={{flex:1,background:C.white,borderRadius:20,padding:"14px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
-        <div style={{fontSize:13,fontWeight:800,color:C.teal,letterSpacing:0.5,marginBottom:12}}>THIS MONTH</div>
-        {[
-          {label:"Daily Tasks",done:tasks.filter(t=>t.category==="Daily"&&t.completed).length,total:Math.max(tasks.filter(t=>t.category==="Daily").length,1),color:C.teal},
-          {label:"Weekly Tasks",done:tasks.filter(t=>t.category==="Weekly"&&t.completed).length,total:Math.max(tasks.filter(t=>t.category==="Weekly").length,1),color:C.orange},
-          {label:"Random Chores",done:(completedChores||[]).length,total:Math.max((completedChores||[]).length,12),color:C.coral},
-        ].map(cat=>(
-          <div key={cat.label} style={{marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-              <span style={{fontSize:12,color:C.dark}}>{cat.label}</span>
-              <span style={{fontSize:12,fontWeight:800,color:C.dark}}>{cat.done} / {cat.total}</span>
-            </div>
-            <div style={{height:8,background:C.grey,borderRadius:4,overflow:"hidden"}}>
-              <div style={{height:"100%",width:`${Math.min(100,Math.round((cat.done/cat.total)*100))}%`,background:cat.color,borderRadius:4,transition:"width 0.4s"}}/>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* MOTIVATION - full width */}
-    <div style={{margin:"0 16px 12px",background:"#EEF6FF",borderRadius:20,padding:"14px 18px",border:"1px solid #C8E6FF",display:"flex",alignItems:"center",gap:14}}>
-      <span style={{fontSize:28,flexShrink:0}}>💙</span>
-      <div style={{flex:1}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.blue,letterSpacing:1,marginBottom:4}}>MOTIVATION</div>
-        <div style={{fontSize:14,fontWeight:800,color:C.dark,marginBottom:3}}>Small steps. Big difference.</div>
-        <div style={{fontSize:12,color:C.greyText}}>Every task you complete is a win! 🎉</div>
-      </div>
-      <span style={{fontSize:28,flexShrink:0}}>🌵</span>
-    </div>
-  </div>);
+  );
 }
 
 function AddTaskScreen({tasks,setTasks,onBack}){
@@ -690,7 +714,11 @@ function SplashScreen(){
       ))}
       <img src="/icon.png" alt="" style={{width:150,height:150,objectFit:"contain",border:"none",background:"transparent",position:"relative",zIndex:2}} onError={e=>e.target.style.display="none"}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,position:"relative",zIndex:2}}>
-        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>{"ADHD CLEANING".split(" ").map((word,wi)=>word.split("").map((ch,ci)=><span key={wi+"-"+ci} style={{color:DC[ci%DC.length]}}>{ch}</span>)).reduce((a,b)=>[...a,<span key="sp" style={{width:10}}/>, ...b])}</div>
+        <div style={{fontSize:32,fontWeight:900,letterSpacing:2,display:"flex",gap:1,flexWrap:"wrap",justifyContent:"center"}}>{["ADHD","CLEANING"].map((word,wi)=>(
+          <span key={wi} style={{display:"flex",gap:1,marginRight:wi===0?10:0}}>
+            {word.split("").map((ch,ci)=><span key={ci} style={{color:DC[(wi*4+ci)%DC.length]}}>{ch}</span>)}
+          </span>
+        ))}</div>
         <div style={{fontSize:32,fontWeight:900,color:"#1F2937",letterSpacing:2}}>CHECKLIST</div>
         <div style={{display:"flex",gap:14,marginTop:10}}>{DC.map((c,i)=><div key={i} style={{width:12,height:12,borderRadius:"50%",background:c}}/>)}</div>
       </div>
