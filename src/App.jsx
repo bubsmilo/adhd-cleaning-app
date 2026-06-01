@@ -249,8 +249,7 @@ function ChecklistScreen({title,color,data,storageKey,onBack}){
               {isOpen&&(
                 <div style={{borderTop:`1px solid ${C.border}`}}>
                   {sItems.map((item,idx)=>(
-                    <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 18px",borderBottom:idx<sItems.length-1||editMode?`1px solid ${C.border}`:"none",cursor:editMode?"default":"pointer",opacity:checks[idx]&&!editMode?0.6:1}}
-                      onClick={()=>!editMode&&toggle(section,idx)} style={{transition:"transform 0.14s ease-out, box-shadow 0.14s ease-out",transform:popKey===(section+"-"+idx)?"scale(1.03)":"scale(1)",boxShadow:popKey===(section+"-"+idx)?"0 6px 20px rgba(0,0,0,0.11)":"none",borderRadius:8,position:"relative",zIndex:popKey===(section+"-"+idx)?2:0}}>
+                    <div key={idx} onClick={()=>!editMode&&toggle(section,idx)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 18px",borderBottom:idx<sItems.length-1||editMode?`1px solid ${C.border}`:"none",cursor:editMode?"default":"pointer",opacity:checks[idx]&&!editMode?0.6:1,transition:"transform 0.14s ease-out, box-shadow 0.14s ease-out",transform:popKey===(section+"-"+idx)?"scale(1.03)":"scale(1)",boxShadow:popKey===(section+"-"+idx)?"0 6px 20px rgba(0,0,0,0.11)":"none",borderRadius:8,position:"relative",zIndex:popKey===(section+"-"+idx)?2:0}}>
                       {editMode?(
                         <button type="button" onClick={()=>deleteItem(section,idx)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
                       ):(
