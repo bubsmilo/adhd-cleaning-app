@@ -331,9 +331,11 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
   const weeklyTasks=tasks.filter(t=>t.category==="Weekly"&&t.day===DOW);
   const monthlyTasks=tasks.filter(t=>{
     if(t.category!=="Monthly")return false;
-    const monthOk=t.months===curMonth||t.months==="every";
+    const m=t.months;
+    const monthOk=m==="every"||(Array.isArray(m)?m.includes("every")||m.includes(curMonth):m===curMonth);
     if(!monthOk)return false;
-    if(t.day===("Day "+dateNum))return true;
+    const dayNum=String(dateNum);
+    if(t.day===("Day "+dateNum)||t.day===dayNum)return true;
     if(t.day==="Last day"&&isLastDay)return true;
     return false;
   });
@@ -423,7 +425,11 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
                 <div style={{width:38,height:38,borderRadius:10,background:col+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{emoji}</div>
                 <div style={{flex:1,cursor:"pointer"}} onClick={()=>toggle(task.id)}>
                   <div style={{fontSize:14,fontWeight:700,color:C.dark,textDecoration:task.completed?"line-through":"none",opacity:task.completed?0.5:1}}>{task.taskName}</div>
-                  {task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:col+"20",padding:"2px 8px",borderRadius:20,marginTop:3,display:"inline-block"}}>{task.room}</span>}
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
+                    {task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:col+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.room}</span>}
+                    {task.category==="Weekly"&&task.day&&<span style={{fontSize:10,fontWeight:700,color:C.blue,background:C.blue+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.day}</span>}
+                    {task.category==="Monthly"&&task.months&&task.months!=="every"&&!(Array.isArray(task.months)&&task.months.includes("every"))&&<span style={{fontSize:10,fontWeight:700,color:"#9B59B6",background:"#9B59B620",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.day==="Last day"?"Last day":(task.day.replace("Day ","")+" "+curMonth)}</span>}
+                  </div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12}}>{Ic.clock()}<span>{task.minutes}m</span></div>
                 <button type="button" onClick={e=>{e.stopPropagation();setEditId(task.id);setSubScreen("editTask");}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button>
@@ -533,8 +539,13 @@ function AddTaskScreen({tasks,setTasks,onBack}){
     let newTasks;
     if(data.category==="Weekly"&&data.days&&data.days.length>1){
       newTasks=data.days.map((day,i)=>({id:Date.now()+i,...data,day,days:undefined,completed:false}));
-    }else if(data.category==="Monthly"&&data.months&&!data.months.includes("every")){
-      newTasks=data.months.map((month,i)=>({id:Date.now()+i,...data,months:month,completed:false}));
+    }else if(data.category==="Monthly"&&data.months){
+      const mArr=Array.isArray(data.months)?data.months:typeof data.months==="string"?[data.months]:["every"];
+      if(mArr.includes("every")){
+        newTasks=[{id:Date.now(),...data,months:"every",days:undefined,completed:false}];
+      }else{
+        newTasks=mArr.map((month,i)=>({id:Date.now()+i,...data,months:month,completed:false}));
+      }
     }else{
       newTasks=[{id:Date.now(),...data,months:data.category==="Monthly"?"every":undefined,days:undefined,completed:false}];
     }
@@ -542,7 +553,20 @@ function AddTaskScreen({tasks,setTasks,onBack}){
   };
   return(<div style={{paddingBottom:80}}><Header title="Add New Task" color={C.coral} onBack={onBack}/><Dots/><TaskForm initial={{}} onSave={s} accent={C.coral} saveLabel="Save Task"/></div>);
 }
-function EditTaskScreen({tasks,setTasks,taskId,onBack}){const task=tasks.find(t=>t.id===taskId);if(!task){onBack();return null;}const s=data=>{const u=tasks.map(t=>t.id===taskId?{...t,...data}:t);setTasks(u);LS.set("tasks",u);setTimeout(onBack,700);};const del=()=>{setTasks(tasks.filter(t=>t.id!==taskId));LS.set("tasks",tasks.filter(t=>t.id!==taskId));onBack();};return(<div style={{paddingBottom:80}}><Header title="Edit Task" color={C.blue} onBack={onBack}/><Dots/><TaskForm initial={task} onSave={s} onDelete={del} accent={C.blue} saveLabel="Save Changes"/></div>);}
+function EditTaskScreen({tasks,setTasks,taskId,onBack}){
+  const task=tasks.find(t=>t.id===taskId);
+  if(!task){onBack();return null;}
+  const s=data=>{
+    const firstDay=data.category==="Weekly"&&data.days&&data.days.length>0?data.days[0]:data.day;
+    let updated=tasks.map(t=>t.id===taskId?{...t,...data,day:firstDay,days:undefined}:t);
+    if(data.category==="Weekly"&&data.days&&data.days.length>1){
+      const extras=data.days.slice(1).map((day,i)=>({id:Date.now()+i+1,...data,day,days:undefined,completed:false}));
+      updated=[...updated,...extras];
+    }
+    setTasks(updated);LS.set("tasks",updated);setTimeout(onBack,700);
+  };
+  const del=()=>{setTasks(tasks.filter(t=>t.id!==taskId));LS.set("tasks",tasks.filter(t=>t.id!==taskId));onBack();};
+  return(<div style={{paddingBottom:80}}><Header title="Edit Task" color={C.blue} onBack={onBack}/><Dots/><TaskForm initial={task} onSave={s} onDelete={del} accent={C.blue} saveLabel="Save Changes"/></div>);}
 
 function TasksScreen({tasks,setTasks,setSubScreen,setEditId}){
   const toggle=id=>{const u=tasks.map(t=>t.id===id?{...t,completed:!t.completed}:t);setTasks(u);LS.set("tasks",u);};
@@ -655,8 +679,30 @@ function MoreTab({setSubScreen}){
   return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",textAlign:"center"}}><h2 style={{margin:"0 0 6px",fontSize:30,fontWeight:900,letterSpacing:1,color:C.blue,textTransform:"uppercase"}}>Checklists</h2></div><Dots/><div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>{buttons.map(b=>(<button key={b.sub} type="button" onClick={()=>setSubScreen(b.sub)} style={{background:b.bg,border:`1.5px solid ${b.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left"}}><span style={{fontSize:28,flexShrink:0}}>{b.emoji}</span><span style={{fontSize:18,fontWeight:800,color:b.color}}>{b.label}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginLeft:"auto",flexShrink:0}}><polyline points="9 18 15 12 9 6"/></svg></button>))}</div></div>);
 }
 
-function SettingsScreen({tasks,timeChores,randomChores,completedChores,onBack}){
-  const reset=()=>{if(confirm("Reset all data to starter data?")){["tasks","timeChores","randomChores","completedChores","dataVersion","lastResetDate","lastWeekReset","lastMonthReset","deepClean","declutter","seasonal","yearly","quarterly","speedCleanTime","speedCleanRoom"].forEach(k=>LS.clear(k));LS.set("completedChores",[]);window.location.reload();}};
+function SettingsScreen({tasks,setTasks,timeChores,randomChores,completedChores,setCompletedChores,onBack}){
+  const reset=()=>{
+    if(confirm("This will delete all your tasks and reset everything to starter data. Are you sure?")){
+      ["tasks","timeChores","randomChores","completedChores","dataVersion","lastResetDate","lastWeekReset","lastMonthReset","deepClean","declutter","seasonal","yearly","quarterly","speedCleanTime","speedCleanRoom","completedDates"].forEach(k=>LS.clear(k));
+      LS.set("completedChores",[]);window.location.reload();
+    }
+  };
+  const resetProgress=()=>{
+    if(confirm("Reset streak, checklists and counts? Your tasks will be kept.")){
+      const cleared=tasks.map(t=>({...t,completed:false}));
+      setTasks(cleared);LS.set("tasks",cleared);
+      setCompletedChores([]);LS.set("completedChores",[]);
+      LS.set("completedDates",[]);
+      ["deepClean","declutter","seasonal","yearly","quarterly","speedCleanTime","speedCleanRoom"].forEach(k=>{
+        const ex=LS.get(k,null);
+        if(ex&&typeof ex==="object"&&!Array.isArray(ex)){
+          const r={};
+          Object.keys(ex).forEach(s=>{r[s]={...ex[s],checked:Array.isArray(ex[s]&&ex[s].checked)?ex[s].checked.map(()=>false):[]};});
+          LS.set(k,r);
+        }
+      });
+      LS.clear("lastResetDate");LS.clear("lastWeekReset");LS.clear("lastMonthReset");
+    }
+  };
   const rows=[{label:"Total Tasks",value:tasks.length},{label:"Completed Today",value:tasks.filter(t=>t.completed&&t.day==="Today").length},{label:"Quick Tasks (I Have Time)",value:timeChores.length},{label:"Random Chore Library",value:randomChores.length},{label:"Random Chores Done",value:completedChores.length}];
   const[notifEnabled,setNotifEnabled]=useState(()=>LS.get("notifEnabled",false));
   const[notifTime,setNotifTime]=useState(()=>LS.get("notifTime","08:00"));
@@ -694,7 +740,12 @@ function SettingsScreen({tasks,timeChores,randomChores,completedChores,onBack}){
         <div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}>
           <div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:4}}>About</div>
           <div style={{fontSize:13,color:C.greyText,marginBottom:14}}>Weekly Cleaning Checklist v1.0</div>
-          <button type="button" onClick={reset} style={{width:"100%",background:C.grey,color:C.coral,border:"none",borderRadius:12,padding:"14px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Reset to Starter Data</button>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <button type="button" onClick={resetProgress} style={{width:"100%",background:"#FEF3E2",color:C.orange,border:"none",borderRadius:12,padding:"14px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Reset Progress Only</button>
+            <div style={{fontSize:11,color:C.greyText,textAlign:"center",marginTop:-4,marginBottom:4}}>Keeps your tasks — resets streak, checklists &amp; counts</div>
+            <button type="button" onClick={reset} style={{width:"100%",background:C.grey,color:C.coral,border:"none",borderRadius:12,padding:"14px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Factory Reset</button>
+            <div style={{fontSize:11,color:C.greyText,textAlign:"center",marginTop:-4}}>Deletes everything and restores starter data</div>
+          </div>
         </div>
       </div>
     </div>
@@ -771,7 +822,7 @@ export default function App(){
     if(sub==="declutter")       return <ChecklistScreen title="Declutter" color={C.coral} data={DECLUTTER_DATA} storageKey="declutter" onBack={back("more")}/>;
     if(sub==="seasonal")        return <ChecklistScreen title="Seasonal" color={C.teal} data={SEASONAL_DATA} storageKey="seasonal" onBack={back("more")}/>;
     if(sub==="yearly")          return <ChecklistScreen title="Yearly Schedule" color={C.orange} data={YEARLY_DATA} storageKey="yearly" onBack={back("more")}/>;
-    if(sub==="settings")        return <SettingsScreen tasks={tasks} timeChores={timeChores} randomChores={randomChores} completedChores={completedChores} onBack={back(tab==="more"?"more":null)}/>;
+    if(sub==="settings")        return <SettingsScreen tasks={tasks} setTasks={setTasks} timeChores={timeChores} randomChores={randomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} onBack={back(tab==="more"?"more":null)}/>;
     if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId} completedChores={completedChores} setTab={goTab}/>;
     if(tab==="tasks")    return <TasksScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
     if(tab==="random")   return <RandomTab randomChores={randomChores} setRandomChores={setRandomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} setSubScreen={setSub}/>;
