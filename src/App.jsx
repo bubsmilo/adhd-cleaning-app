@@ -178,7 +178,11 @@ function ChecklistScreen({title,color,data,storageKey,onBack}){
 
   const save=(ns)=>{setState(ns);LS.set(storageKey,ns);};
 
+  const[popKey,setPopKey]=useState(null);
   const toggle=(section,idx)=>{
+    const key=section+"-"+idx;
+    setPopKey(key);
+    setTimeout(()=>setPopKey(null),280);
     const ns={...state};
     ns[section]={...ns[section],checked:[...ns[section].checked]};
     ns[section].checked[idx]=!ns[section].checked[idx];
@@ -246,7 +250,7 @@ function ChecklistScreen({title,color,data,storageKey,onBack}){
                 <div style={{borderTop:`1px solid ${C.border}`}}>
                   {sItems.map((item,idx)=>(
                     <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 18px",borderBottom:idx<sItems.length-1||editMode?`1px solid ${C.border}`:"none",cursor:editMode?"default":"pointer",opacity:checks[idx]&&!editMode?0.6:1}}
-                      onClick={()=>!editMode&&toggle(section,idx)}>
+                      onClick={()=>!editMode&&toggle(section,idx)} style={{transition:"transform 0.14s ease-out, box-shadow 0.14s ease-out",transform:popKey===(section+"-"+idx)?"scale(1.03)":"scale(1)",boxShadow:popKey===(section+"-"+idx)?"0 6px 20px rgba(0,0,0,0.11)":"none",borderRadius:8,position:"relative",zIndex:popKey===(section+"-"+idx)?2:0}}>
                       {editMode?(
                         <button type="button" onClick={()=>deleteItem(section,idx)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
                       ):(
@@ -306,6 +310,9 @@ function BottomNav({tab,setTab}){
 }
 
 function TaskRow({task,onToggle,onEdit,showDay,isLast}){const col=RC[task.room]||C.greyText;
+  const[popping,setPopping]=useState(false);
+  const handleToggle=()=>{setPopping(true);setTimeout(()=>setPopping(false),280);onToggle();};
+
   const dayLabel=task.category==="Weekly"&&task.day?DAYS_SHORT[WEEKDAYS.indexOf(task.day)]:null;
   const dateLabel=task.category==="Monthly"&&task.day?(task.day==="Last day"?"Last":task.day.replace("Day ","")):null;
   return(<div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:isLast?"":`1px solid ${C.border}`,opacity:task.completed?0.45:1}}><CBx checked={task.completed} onToggle={onToggle}/><div style={{flex:1,cursor:"pointer"}} onClick={onToggle}><div style={{fontSize:14,fontWeight:600,color:C.dark,textDecoration:task.completed?"line-through":"none"}}>{task.taskName}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>{task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:`${col}20`,padding:"2px 7px",borderRadius:20}}>{task.room}</span>}{dayLabel&&<span style={{fontSize:10,fontWeight:700,color:C.teal,background:"#E8F7F2",padding:"2px 7px",borderRadius:20}}>{dayLabel}</span>}{dateLabel&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{dateLabel}</span>}{task.months&&task.months!=="every"&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{task.months.slice(0,3)}</span>}</div></div><div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12,marginRight:4}}>{Ic.clock()}<span>{task.minutes}m</span></div><button type="button" onClick={e=>{e.stopPropagation();onEdit();}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button></div>);
