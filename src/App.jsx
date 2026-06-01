@@ -304,7 +304,7 @@ function TaskForm({initial,onSave,onDelete,accent,saveLabel}){
 }
 
 function BottomNav({tab,setTab}){
-  const tabs=[{id:"home",label:"Home",icon:Ic.home,activeColor:C.teal},{id:"tasks",label:"Tasks",icon:Ic.tasks,activeColor:C.coral},{id:"random",label:"Random",icon:Ic.random,activeColor:C.orange},{id:"progress",label:"Progress",icon:Ic.progress,activeColor:C.teal},{id:"more",label:"Lists",icon:Ic.more,activeColor:C.blue}];
+  const tabs=[{id:"home",label:"Home",icon:Ic.home,activeColor:C.teal},{id:"tasks",label:"Tasks",icon:Ic.tasks,activeColor:C.coral},{id:"random",label:"Random",icon:Ic.random,activeColor:C.orange},{id:"progress",label:"Progress",icon:Ic.progress,activeColor:C.teal},{id:"more",label:"Explore",icon:Ic.more,activeColor:C.blue}];
   return(<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.white,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>{tabs.map(t=>{const active=tab===t.id,color=active?t.activeColor:C.greyText;return(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"none",padding:"8px 0 10px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>{t.icon(color)}<span style={{fontSize:10,color,fontWeight:active?700:400,fontFamily:"inherit"}}>{t.label}</span></button>);})}</div>);
 }
 
@@ -674,17 +674,123 @@ function ProgressScreen({tasks,completedChores,setSubScreen}){
 
 function SpeedCleanTab({setSubScreen,onBack}){return(<div style={{paddingBottom:80}}><Header title="Speed Cleaning" color={C.teal} onBack={onBack} fs={24}/><Dots/><div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,color:C.greyText,lineHeight:1.6}}>Choose your speed cleaning mode — pick by how much time you have, or go room by room.</div></div><button type="button" onClick={()=>setSubScreen("speedCleanTime")} style={{background:"#E8F7F2",border:"1.5px solid #A8D9C8",borderRadius:20,padding:"20px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left"}}><span style={{fontSize:32,flexShrink:0}}>⏱️</span><div style={{flex:1}}><div style={{fontSize:17,fontWeight:800,color:C.teal}}>By Time</div><div style={{fontSize:12,color:C.greyText,marginTop:3}}>5, 10, 20, 30, 45, 60 or 90 minutes</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button><button type="button" onClick={()=>setSubScreen("speedCleanRoom")} style={{background:"#FEF3E2",border:"1.5px solid #F0C888",borderRadius:20,padding:"20px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left"}}><span style={{fontSize:32,flexShrink:0}}>🏠</span><div style={{flex:1}}><div style={{fontSize:17,fontWeight:800,color:C.orange}}>Room by Room</div><div style={{fontSize:12,color:C.greyText,marginTop:3}}>Kitchen, Bathroom, Bedroom, Living Room</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button></div></div>);}
 
+
+const CHALLENGE_30DAY={
+  "Week 1 - Quick Wins":{emoji:"⚡",items:["Clear one kitchen drawer","Donate 5 items of clothing","Clear off one countertop","Declutter your purse or bag","Recycle old magazines and papers","Clear out one shelf","Sort through your nightstand"]},
+  "Week 2 - Clothing":{emoji:"👕",items:["Donate clothes you haven't worn in a year","Clear out mismatched socks","Declutter workout clothes","Sort through shoes","Clear out accessories you don't use","Donate clothes that don't fit","Sort through outerwear and jackets"]},
+  "Week 3 - Kitchen and Living":{emoji:"🍳",items:["Clear out expired pantry items","Donate duplicate kitchen tools","Declutter the junk drawer","Sort through Tupperware and lids","Clear the coffee table","Donate books you won't reread","Declutter the entertainment area"]},
+  "Week 4 - Final Push":{emoji:"🏁",items:["Clear out the bathroom cabinet","Donate toiletries you don't use","Declutter under the sink","Sort through the garage or storage","Clear out the car","Donate kids toys or games","Celebrate — you did it!"]}
+};
+
+const CHALLENGE_WEEKEND={
+  "Saturday Morning":{emoji:"☀️",items:["Clear all flat surfaces in the living room","Sort through one clothes pile","Wipe down kitchen counters and appliances","Empty all bins and replace bags","Vacuum or sweep main living areas"]},
+  "Saturday Afternoon":{emoji:"🌤️",items:["Tackle the bathroom — surfaces, toilet, mirror","Sort through any piles of mail or papers","Donate a bag of items you no longer need","Clean out the fridge of expired items","Mop or wipe the kitchen floor"]},
+  "Sunday Morning":{emoji:"🌅",items:["Deep clean the bedroom — surfaces and floor","Sort through your wardrobe for donations","Change and wash the bedding","Declutter one drawer or shelf","Wipe down skirting boards and switches"]},
+  "Sunday Afternoon":{emoji:"🌞",items:["Tidy entrance and hallway areas","Sort through any bags or backpacks","Clear out the car if needed","Final vacuum of the whole home","Put everything away — you're done!"]}
+};
+
+const CHALLENGE_PAPER={
+  "Incoming Paper":{emoji:"📬",items:["Sort all mail into keep, shred, recycle","Set up an inbox spot for new paper","Deal with any overdue bills or letters","File or scan important documents","Recycle junk mail immediately"]},
+  "Old Documents":{emoji:"🗂️",items:["Shred old bank statements over 7 years","Sort through old receipts","File tax documents properly","Scan and digitise important certificates","Clear out old instruction manuals"]},
+  "Books and Magazines":{emoji:"📚",items:["Donate books you won't read again","Recycle old magazines","Keep only your current favourites","Clear bookshelf of knick-knacks","Organise what remains by category"]},
+  "Kids Paper":{emoji:"🖍️",items:["Sort through artwork — keep only favourites","Digitise special drawings by photographing them","Clear out old schoolbooks","Sort current school papers","Set up a system for new papers coming in"]}
+};
+
+const CHALLENGE_DIGITAL={
+  "Email Inbox":{emoji:"📧",items:["Unsubscribe from 10 email lists","Delete emails older than 6 months you don't need","Create folders for important emails","Clear your spam folder","Archive anything worth keeping"]},
+  "Photos":{emoji:"📷",items:["Delete duplicate or blurry photos","Organise photos into albums by year","Back up your phone photos","Delete screenshots you no longer need","Clear recently deleted folder"]},
+  "Phone and Apps":{emoji:"📱",items:["Delete apps you haven't used in 3 months","Clear app caches","Organise your home screen","Delete old contacts","Clear out your downloads folder"]},
+  "Computer and Files":{emoji:"💻",items:["Empty the recycle bin","Delete duplicate files","Organise your desktop","Clear out your downloads","Back up important files to cloud"]}
+};
+
+const CHALLENGE_WHOLE_HOME={
+  "Entryway and Hallways":{emoji:"🚪",items:["Clear all shoes and coats to proper places","Declutter the console or entrance table","Remove anything that doesn't belong","Wipe walls and light switches","Create a system for keys and bags"]},
+  "Kitchen":{emoji:"🍳",items:["Clear all counters completely","Declutter one cupboard fully","Check pantry for expired items","Donate unused appliances","Organise the fridge"]},
+  "Living Areas":{emoji:"🛋️",items:["Remove everything from surfaces","Donate books, DVDs or games you don't use","Sort through cushions and throws","Declutter shelves and cabinets","Hoover under furniture"]},
+  "Bedrooms":{emoji:"🛏️",items:["Clear bedside tables completely","Sort through wardrobe — 3 bags: keep, donate, bin","Declutter under the bed","Sort through drawers","Change and refresh bedding"]},
+  "Bathrooms":{emoji:"🚿",items:["Clear out expired medicines and toiletries","Sort through makeup and skincare","Declutter under the sink","Organise towels and flannels","Wipe all surfaces and mirrors"]}
+};
+
+function ADHDPlaceholder({title,emoji,color,bg,onBack}){
+  return(
+    <div style={{paddingBottom:80}}>
+      <Header title={title} color={color} onBack={onBack} fs={22}/>
+      <Dots/>
+      <div style={{padding:"40px 24px",display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16}}>
+        <div style={{fontSize:80}}>{emoji}</div>
+        <div style={{fontSize:22,fontWeight:900,color:color}}>{title}</div>
+        <div style={{background:bg,borderRadius:20,padding:"20px 24px",border:"1.5px solid "+color+"40",maxWidth:340}}>
+          <div style={{fontSize:15,color:C.dark,fontWeight:700,marginBottom:8}}>Coming Soon</div>
+          <div style={{fontSize:13,color:C.greyText,lineHeight:1.6}}>This page is being designed with helpful tools and strategies specifically for you. Check back soon!</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MoreTab({setSubScreen}){
-  const buttons=[
-    {label:"Deep Clean",emoji:"🧹",sub:"deepClean",bg:"#FEF3E2",border:"#F0C888",color:C.orange},
-    {label:"Declutter",emoji:"📦",sub:"declutter",bg:"#FDEEF1",border:"#F0A8B8",color:C.coral},
-    {label:"Speed Cleaning",emoji:"⚡",sub:"speedClean",bg:"#E8F7F2",border:"#A8D9C8",color:C.teal},
-    {label:"Seasonal Maintenance",emoji:"🌿",sub:"seasonal",bg:"#EEF4FF",border:"#B0C8F0",color:C.blue},
-    {label:"Quarterly Schedule",emoji:"🗓️",sub:"quarterly",bg:"#F5F0FF",border:"#C8B0F0",color:"#7B5DD9"},
-    {label:"Yearly Schedule",emoji:"📅",sub:"yearly",bg:"#FEF3E2",border:"#F0C888",color:C.orange},
-    {label:"Settings",emoji:"⚙️",sub:"settings",bg:C.grey,border:C.border,color:C.dark},
-  ];
-  return(<div style={{paddingBottom:80}}><div style={{padding:"20px 20px 8px",textAlign:"center"}}><h2 style={{margin:"0 0 6px",fontSize:30,fontWeight:900,letterSpacing:1,color:C.blue,textTransform:"uppercase"}}>Checklists</h2></div><Dots/><div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>{buttons.map(b=>(<button key={b.sub} type="button" onClick={()=>setSubScreen(b.sub)} style={{background:b.bg,border:`1.5px solid ${b.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left"}}><span style={{fontSize:28,flexShrink:0}}>{b.emoji}</span><span style={{fontSize:18,fontWeight:800,color:b.color}}>{b.label}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginLeft:"auto",flexShrink:0}}><polyline points="9 18 15 12 9 6"/></svg></button>))}</div></div>);
+  const SectionHeader=({title,color})=>(
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"4px 0 10px"}}>
+      <span style={{fontSize:12,fontWeight:800,color:color||C.dark,letterSpacing:1}}>{title}</span>
+      <div style={{flex:1,height:1.5,background:color?color+"30":C.border,borderRadius:2}}/>
+    </div>
+  );
+  const Btn=({emoji,label,sub,bg,border,color,subtitle})=>(
+    <button type="button" onClick={()=>setSubScreen(sub)} style={{background:bg,border:"2px solid "+border,borderRadius:20,padding:"16px 14px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6,textAlign:"center",flex:1,minWidth:0}}>
+      <span style={{fontSize:28}}>{emoji}</span>
+      <div style={{fontSize:13,fontWeight:700,color:color,lineHeight:1.2}}>{label}</div>
+      {subtitle&&<div style={{fontSize:10,color:C.greyText,lineHeight:1.3}}>{subtitle}</div>}
+    </button>
+  );
+  return(
+    <div style={{paddingBottom:80}}>
+      <div style={{padding:"20px 20px 8px",textAlign:"center"}}>
+        <h2 style={{margin:"0 0 2px",fontSize:28,fontWeight:900,letterSpacing:1,color:C.blue}}>EXPLORE</h2>
+      </div>
+      <Dots/>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:4}}>
+
+        <SectionHeader title="CHECKLISTS" color={C.orange}/>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <Btn emoji="🧹" label="Deep Clean" sub="deepClean" bg="#FEF3E2" border="#F0C888" color={C.orange}/>
+          <Btn emoji="📦" label="Declutter" sub="declutter" bg="#FDEEF1" border="#F0A8B8" color={C.coral}/>
+          <Btn emoji="⚡" label="Speed Clean" sub="speedClean" bg="#E8F7F2" border="#A8D9C8" color={C.teal}/>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <Btn emoji="🗓️" label="Quarterly" sub="quarterly" bg="#FFF8F0" border="#FFD599" color={C.orange}/>
+          <Btn emoji="🌿" label="Seasonal" sub="seasonal" bg="#EEF6FF" border="#C8DCFF" color={C.blue}/>
+          <Btn emoji="📅" label="Yearly" sub="yearly" bg="#F5F0FF" border="#C8B4FF" color="#7B5DD9"/>
+        </div>
+
+        <SectionHeader title="DECLUTTERING CHALLENGES" color="#7B5DD9"/>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <Btn emoji="🏆" label="30-Day Challenge" sub="challenge30" bg="#F5F0FF" border="#C8B4FF" color="#7B5DD9" subtitle="One task a day"/>
+          <Btn emoji="⚔️" label="Weekend Warrior" sub="challengeWeekend" bg="#FEF3E2" border="#F0C888" color={C.orange} subtitle="Tackle it all"/>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <Btn emoji="📄" label="Paper Chase" sub="challengePaper" bg="#EEF6FF" border="#C8DCFF" color={C.blue} subtitle="Tackle paper clutter"/>
+          <Btn emoji="💻" label="Digital Life" sub="challengeDigital" bg="#E8F7F2" border="#A8D9C8" color={C.teal} subtitle="Clear digital clutter"/>
+          <Btn emoji="🏠" label="Whole Home" sub="challengeWholeHome" bg="#FDEEF1" border="#F0A8B8" color={C.coral} subtitle="Full reset"/>
+        </div>
+
+        <SectionHeader title="ADHD SUPPORT" color={C.teal}/>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <Btn emoji="😰" label="I Feel Overwhelmed" sub="adhd_overwhelmed" bg="#EEF6FF" border="#C8DCFF" color={C.blue}/>
+          <Btn emoji="🔋" label="Low Energy Mode" sub="adhd_lowenergy" bg="#FFFBE0" border="#F0D060" color={C.orange}/>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <Btn emoji="🪨" label="Can't Get Started" sub="adhd_cantstart" bg="#E8F7F2" border="#A8D9C8" color={C.teal}/>
+          <Btn emoji="🔄" label="Help Me Reset" sub="adhd_reset" bg="#FDEEF1" border="#F0A8B8" color={C.coral}/>
+        </div>
+
+        <button type="button" onClick={()=>setSubScreen("settings")} style={{background:C.grey,border:"none",borderRadius:16,padding:"14px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%"}}>
+          <span style={{fontSize:20}}>⚙️</span>
+          <span style={{fontSize:15,fontWeight:700,color:C.dark}}>Settings</span>
+        </button>
+
+      </div>
+    </div>
+  );
 }
 
 function SettingsScreen({tasks,setTasks,timeChores,randomChores,completedChores,setCompletedChores,onBack}){
@@ -719,7 +825,21 @@ function SettingsScreen({tasks,setTasks,timeChores,randomChores,completedChores,
   const requestPermission=async()=>{if(typeof Notification==="undefined"){setPermStatus("unsupported");return;}const result=await Notification.requestPermission();setPermStatus(result);if(result==="granted"){setNotifEnabled(true);LS.set("notifEnabled",true);}};
   const toggleNotif=async()=>{if(!notifEnabled){if(permStatus==="granted"){setNotifEnabled(true);LS.set("notifEnabled",true);}else await requestPermission();}else{setNotifEnabled(false);LS.set("notifEnabled",false);}};
   const handleTimeChange=t=>{setNotifTime(t);LS.set("notifTime",t);};
-  const testNotif=()=>{if(permStatus!=="granted")return;const incomplete=tasks.filter(t=>t.day==="Today"&&!t.completed);new Notification("🧹 Weekly Cleaning Checklist",{body:incomplete.length>0?`You have ${incomplete.length} task${incomplete.length!==1?"s":""} left today. Let's get cleaning!`:"All tasks done today — amazing work! 🎉",icon:"/favicon.ico"});};
+  const showNotif=(title,body)=>{
+    if(typeof Notification==="undefined"||Notification.permission!=="granted")return;
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.ready.then(reg=>{
+        reg.showNotification(title,{body,icon:"/icon.png",badge:"/icon.png"});
+      }).catch(()=>{try{new Notification(title,{body,icon:"/icon.png"});}catch(e){}});
+    } else {
+      try{new Notification(title,{body,icon:"/icon.png"});}catch(e){}
+    }
+  };
+  const testNotif=()=>{
+    if(permStatus!=="granted")return;
+    const incomplete=tasks.filter(t=>t.day==="Today"&&!t.completed);
+    showNotif("🧹 ADHD Cleaning Checklist",incomplete.length>0?`You have ${incomplete.length} task${incomplete.length!==1?"s":""} left today. Let's get cleaning!`:"All tasks done today — amazing work! 🎉");
+  };
   return(
     <div style={{paddingBottom:80}}>
       <Header title="Settings" color={C.blue} onBack={onBack}/><Dots/>
@@ -794,6 +914,11 @@ function SplashScreen(){
 
 export default function App(){
   const[splash,setSplash]=useState(true);
+  useEffect(()=>{
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("/sw.js").catch(()=>{});
+    }
+  },[]);
   useEffect(()=>{const t=setTimeout(()=>setSplash(false),2800);return()=>clearTimeout(t);},[]);
   const[tab,setTab]=useState("home");const[sub,setSub]=useState(null);const[editId,setEditId]=useState(null);
   const[tasks,setTasks]=useState(()=>initTasks());const[timeChores,setTimeChores]=useState(()=>initTimeChores());const[randomChores,setRandomChores]=useState(()=>initRandomChores());const[completedChores,setCompletedChores]=useState(()=>initCompletedChores());
@@ -806,7 +931,7 @@ export default function App(){
       target.setHours(h,m,0,0);if(target<=now)target.setDate(target.getDate()+1);
       const tid=setTimeout(()=>{
         const incomplete=tasks.filter(t=>t.day==="Today"&&!t.completed);
-        new Notification("🧹 Weekly Cleaning Checklist",{body:incomplete.length>0?`You have ${incomplete.length} task${incomplete.length!==1?"s":""} left today. Let's get cleaning!`:"All tasks done today — amazing work! 🎉",icon:"/favicon.ico"});
+        if("serviceWorker" in navigator){navigator.serviceWorker.ready.then(reg=>{reg.showNotification("🧹 ADHD Cleaning Checklist",{body:incomplete.length>0?`You have ${incomplete.length} task${incomplete.length!==1?"s":""} left today. Let's get cleaning!`:"All tasks done today — amazing work! 🎉",icon:"/icon.png"});}).catch(()=>{});} else {try{new Notification("🧹 ADHD Cleaning Checklist",{body:incomplete.length>0?`You have ${incomplete.length} task${incomplete.length!==1?"s":""} left today. Let's get cleaning!`:"All tasks done today — amazing work! 🎉",icon:"/icon.png"});}catch(e){}}
         schedule();
       },target-now);
       return()=>clearTimeout(tid);
@@ -832,6 +957,15 @@ export default function App(){
     if(sub==="seasonal")        return <ChecklistScreen title="Seasonal" color={C.teal} data={SEASONAL_DATA} storageKey="seasonal" onBack={back("more")}/>;
     if(sub==="yearly")          return <ChecklistScreen title="Yearly Schedule" color={C.orange} data={YEARLY_DATA} storageKey="yearly" onBack={back("more")}/>;
     if(sub==="settings")        return <SettingsScreen tasks={tasks} setTasks={setTasks} timeChores={timeChores} randomChores={randomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} onBack={back(tab==="more"?"more":null)}/>;
+    if(sub==="challenge30")      return <ChecklistScreen title="30-Day Challenge" color="#7B5DD9" data={CHALLENGE_30DAY} storageKey="challenge30" onBack={back("more")}/>;
+    if(sub==="challengeWeekend") return <ChecklistScreen title="Weekend Warrior" color={C.orange} data={CHALLENGE_WEEKEND} storageKey="challengeWeekend" onBack={back("more")}/>;
+    if(sub==="challengePaper")   return <ChecklistScreen title="Paper Chase" color={C.blue} data={CHALLENGE_PAPER} storageKey="challengePaper" onBack={back("more")}/>;
+    if(sub==="challengeDigital") return <ChecklistScreen title="Digital Life" color={C.teal} data={CHALLENGE_DIGITAL} storageKey="challengeDigital" onBack={back("more")}/>;
+    if(sub==="challengeWholeHome") return <ChecklistScreen title="Whole Home Reset" color={C.coral} data={CHALLENGE_WHOLE_HOME} storageKey="challengeWholeHome" onBack={back("more")}/>;
+    if(sub==="adhd_overwhelmed") return <ADHDPlaceholder title="I Feel Overwhelmed" emoji="😰" color={C.blue} bg="#EEF6FF" onBack={back("more")}/>;
+    if(sub==="adhd_lowenergy")   return <ADHDPlaceholder title="Low Energy Mode" emoji="🔋" color={C.orange} bg="#FFFBE0" onBack={back("more")}/>;
+    if(sub==="adhd_cantstart")   return <ADHDPlaceholder title="I Can't Get Started" emoji="🪨" color={C.teal} bg="#E8F7F2" onBack={back("more")}/>;
+    if(sub==="adhd_reset")       return <ADHDPlaceholder title="Help Me Reset" emoji="🔄" color={C.coral} bg="#FDEEF1" onBack={back("more")}/>;
     if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId} completedChores={completedChores} setTab={goTab}/>;
     if(tab==="tasks")    return <TasksScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
     if(tab==="random")   return <RandomTab randomChores={randomChores} setRandomChores={setRandomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} setSubScreen={setSub}/>;
