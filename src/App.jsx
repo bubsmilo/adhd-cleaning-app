@@ -343,7 +343,7 @@ function TaskRow({task,onToggle,onEdit,showDay,isLast}){const col=RC[task.room]|
   return(<div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:isLast?"":`1px solid ${C.border}`,opacity:task.completed?0.45:1}}><CBx checked={task.completed} onToggle={onToggle}/><div style={{flex:1,cursor:"pointer"}} onClick={onToggle}><div style={{fontSize:14,fontWeight:600,color:C.dark,textDecoration:task.completed?"line-through":"none"}}>{task.taskName}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>{task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:`${col}20`,padding:"2px 7px",borderRadius:20}}>{task.room}</span>}{dayLabel&&<span style={{fontSize:10,fontWeight:700,color:C.teal,background:"#E8F7F2",padding:"2px 7px",borderRadius:20}}>{dayLabel}</span>}{dateLabel&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{dateLabel}</span>}{task.months&&task.months!=="every"&&<span style={{fontSize:10,fontWeight:700,color:"#7B5DD9",background:"#F5F0FF",padding:"2px 7px",borderRadius:20}}>{task.months.slice(0,3)}</span>}</div></div><div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12,marginRight:4}}>{Ic.clock()}<span>{task.minutes}m</span></div><button type="button" onClick={e=>{e.stopPropagation();onEdit();}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button></div>);
 }
 
-function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTab}){
+function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTab,todos,setTodos}){
   const now=new Date();
   const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][now.getDay()];
   const dateNum=now.getDate();
@@ -387,10 +387,13 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
     if(completedDates.includes(d)){streak++;}else if(si>0){break;}
   }
   const weekDays=["M","T","W","T","F","S","S"];
-  const todosToday=LS.get("todoList",[]).filter(t=>t.dueDate===new Date().toISOString().split("T")[0]);
+  const todayStr=new Date().toISOString().split("T")[0];
+  const todosToday=(todos||[]).filter(t=>t.dueDate===todayStr);
   const toggleTodo=id=>{
-    const tds=LS.get("todoList",[]);
-    LS.set("todoList",tds.map(t=>t.id===id?{...t,completed:!t.completed}:t));
+    setAnimating(prev=>({...prev,[id]:"pop"}));
+    setTimeout(()=>setAnimating(prev=>{const n={...prev};delete n[id];return n;}),280);
+    const updated=(todos||[]).map(t=>t.id===id?{...t,completed:!t.completed}:t);
+    setTodos(updated);LS.set("todoList",updated);
   };
   const sorted=[...allToday,...todosToday.map(t=>({...t,_isTodo:true}))];
   const dailyDone=tasks.filter(t=>t.category==="Daily"&&t.completed).length;
@@ -780,133 +783,326 @@ const CHALLENGE_WHOLE_HOME={
   "Bathrooms":{emoji:"🚿",items:["Clear out expired medicines and toiletries","Sort through makeup and skincare","Declutter under the sink","Organise towels and flannels","Wipe all surfaces and mirrors"]}
 };
 
-function ShoppingListScreen({onBack}){
+function AllShoppingItemsScreen({onBack}){
   const[list,setList]=useState(()=>initShoppingList());
-  const[expandedStore,setExpandedStore]=useState(null);
-  const[expandedCat,setExpandedCat]=useState({});
-  const[newItem,setNewItem]=useState({});
-  const[newCatName,setNewCatName]=useState({});
-  const[newStoreName,setNewStoreName]=useState("");
-  const[editMode,setEditMode]=useState(false);
+  const[expanded,setExpanded]=useState({});
   const save=l=>{setList(l);LS.set("shoppingList",l);};
-  const toggleItem=(sid,cid,iid)=>{
-    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.map(i=>i.id!==iid?i:{...i,checked:!i.checked})})})};
-    save(l);
-  };
-  const addItem=(sid,cid)=>{
-    const key=sid+cid;const text=(newItem[key]||"").trim();if(!text)return;
-    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:[...c.items,{id:"i"+Date.now(),name:text,checked:false}]})})};
-    save(l);setNewItem(prev=>({...prev,[key]:""}));
-  };
-  const deleteItem=(sid,cid,iid)=>{
-    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.filter(i=>i.id!==iid)})})};save(l);
-  };
-  const clearChecked=(sid)=>{
-    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>({...c,items:c.items.filter(i=>!i.checked)}))})};save(l);
-  };
-  const addCategory=(sid)=>{
-    const text=(newCatName[sid]||"").trim();if(!text)return;
-    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:[...s.categories,{id:"c"+Date.now(),name:text,items:[]}]})};
-    save(l);setNewCatName(prev=>({...prev,[sid]:""}));
-  };
-  const addStore=()=>{
-    const text=newStoreName.trim();if(!text)return;
-    const colors=[C.teal,C.blue,C.coral,C.orange,"#7B5DD9"];
-    const l={...list,stores:[...list.stores,{id:"s"+Date.now(),name:text,color:colors[list.stores.length%5],categories:[{id:"c"+Date.now(),name:"General",items:[]}]}]};
-    save(l);setNewStoreName("");
-  };
-  const deleteStore=(sid)=>{const l={...list,stores:list.stores.filter(s=>s.id!==sid)};save(l);};
-  const deleteCategory=(sid,cid)=>{
-    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.filter(c=>c.id!==cid)})};save(l);
-  };
+  const deleteItem=(sid,cid,iid)=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.filter(i=>i.id!==iid)})})});};
+  const deleteCategory=(sid,cid)=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.filter(c=>c.id!==cid)})});};
+  const deleteStore=sid=>{save({...list,stores:list.stores.filter(s=>s.id!==sid)});};
+  const regulars=LS.get("regularItems",[]);
+  const deleteRegular=id=>{LS.set("regularItems",regulars.filter(r=>r.id!==id));};
 
   return(
     <div style={{paddingBottom:80}}>
-      <Header title="Shopping List" color={C.teal} onBack={onBack} fs={24}
-        rightEl={<button type="button" onClick={()=>setEditMode(!editMode)} style={{border:"none",background:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:editMode?C.coral:C.teal,fontFamily:"inherit",padding:"4px 8px"}}>{editMode?"Done":"Edit"}</button>}
-      />
+      <Header title="All Items" color={C.teal} onBack={onBack} fs={24}/>
       <Dots/>
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:10}}>
         {list.stores.map(store=>{
+          const isOpen=expanded[store.id]!==false;
           const totalItems=store.categories.reduce((a,c)=>a+c.items.length,0);
-          const checkedItems=store.categories.reduce((a,c)=>a+c.items.filter(i=>i.checked).length,0);
-          const isOpen=expandedStore===store.id;
           return(
             <div key={store.id} style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",padding:"14px 16px",background:store.color+"15",borderBottom:isOpen?("1px solid "+store.color+"30"):"none"}}>
-                {editMode&&<button type="button" onClick={()=>deleteStore(store.id)} style={{border:"none",background:"none",cursor:"pointer",marginRight:8,padding:2,flexShrink:0}}>{Ic.trash()}</button>}
-                <button type="button" onClick={()=>setExpandedStore(isOpen?null:store.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
+              <div style={{display:"flex",alignItems:"center",padding:"14px 16px",background:store.color+"18"}}>
+                <button type="button" onClick={()=>setExpanded(p=>({...p,[store.id]:!isOpen}))} style={{flex:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:20}}>🛒</span>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:15,fontWeight:800,color:store.color}}>{store.name}</div>
-                    <div style={{fontSize:11,color:C.greyText,marginTop:1}}>{checkedItems}/{totalItems} items</div>
-                  </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s",flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
+                  <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800,color:store.color}}>{store.name}</div>
+                  <div style={{fontSize:11,color:C.greyText,marginTop:1}}>{totalItems} items</div></div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
-                {isOpen&&checkedItems>0&&!editMode&&<button type="button" onClick={()=>clearChecked(store.id)} style={{border:"none",background:store.color,borderRadius:10,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:C.white,marginLeft:8,flexShrink:0}}>Clear done</button>}
+                <button type="button" onClick={()=>deleteStore(store.id)} style={{border:"none",background:"none",cursor:"pointer",padding:"4px 6px",marginLeft:8,flexShrink:0}}>{Ic.trash()}</button>
               </div>
-              {isOpen&&(
-                <div style={{padding:"8px 0"}}>
-                  {store.categories.map(cat=>{
-                    const catKey=expandedCat[store.id+cat.id];
-                    return(
-                      <div key={cat.id} style={{marginBottom:2}}>
-                        <div style={{display:"flex",alignItems:"center",padding:"8px 16px",cursor:"pointer"}} onClick={()=>setExpandedCat(prev=>({...prev,[store.id+cat.id]:!prev[store.id+cat.id]}))}>
-                          {editMode&&<button type="button" onClick={e=>{e.stopPropagation();deleteCategory(store.id,cat.id);}} style={{border:"none",background:"none",cursor:"pointer",marginRight:6,padding:2}}>{Ic.trash()}</button>}
-                          <span style={{fontSize:12,fontWeight:700,color:store.color,flex:1}}>{cat.name} <span style={{color:C.greyText,fontWeight:400}}>({cat.items.length})</span></span>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:catKey?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
-                        </div>
-                        {catKey&&(
-                          <div style={{paddingLeft:16}}>
-                            {cat.items.map(item=>(
-                              <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 16px 8px 0",borderBottom:"1px solid "+C.border}}>
-                                {editMode?<button type="button" onClick={()=>deleteItem(store.id,cat.id,item.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
-                                :<div onClick={()=>toggleItem(store.id,cat.id,item.id)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:"pointer",border:"2px solid "+(item.checked?store.color:C.border),background:item.checked?store.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                                  {item.checked&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                                </div>}
-                                <span style={{fontSize:13,color:C.dark,textDecoration:item.checked?"line-through":"none",opacity:item.checked?0.5:1,flex:1}}>{item.name}</span>
-                              </div>
-                            ))}
-                            <div style={{display:"flex",gap:8,padding:"8px 16px 8px 0"}}>
-                              <input style={{flex:1,padding:"7px 10px",border:"1px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:"inherit",color:C.dark,background:C.white,outline:"none"}}
-                                placeholder="Add item..." value={newItem[store.id+cat.id]||""}
-                                onChange={e=>setNewItem(prev=>({...prev,[store.id+cat.id]:e.target.value}))}
-                                onKeyDown={e=>e.key==="Enter"&&addItem(store.id,cat.id)}/>
-                              <button type="button" onClick={()=>addItem(store.id,cat.id)} style={{background:store.color,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {editMode&&(
-                    <div style={{display:"flex",gap:8,padding:"8px 16px"}}>
-                      <input style={{flex:1,padding:"7px 10px",border:"1px solid "+C.border,borderRadius:10,fontSize:12,fontFamily:"inherit",outline:"none"}}
-                        placeholder="New category..." value={newCatName[store.id]||""}
-                        onChange={e=>setNewCatName(prev=>({...prev,[store.id]:e.target.value}))}
-                        onKeyDown={e=>e.key==="Enter"&&addCategory(store.id)}/>
-                      <button type="button" onClick={()=>addCategory(store.id)} style={{background:store.color,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:C.white}}>+ Category</button>
+              {isOpen&&store.categories.map(cat=>(
+                <div key={cat.id} style={{borderTop:"1px solid "+C.border}}>
+                  <div style={{display:"flex",alignItems:"center",padding:"8px 14px",background:store.color+"0A"}}>
+                    <span style={{flex:1,fontSize:12,fontWeight:700,color:store.color}}>{cat.name} <span style={{color:C.greyText,fontWeight:400}}>({cat.items.length})</span></span>
+                    <button type="button" onClick={()=>deleteCategory(store.id,cat.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
+                  </div>
+                  {cat.items.map((item,i)=>(
+                    <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<cat.items.length-1?"1px solid "+C.border:"none"}}>
+                      <span style={{flex:1,fontSize:13,color:C.dark}}>{item.name}</span>
+                      <button type="button" onClick={()=>deleteItem(store.id,cat.id,item.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
                     </div>
-                  )}
+                  ))}
+                  {cat.items.length===0&&<div style={{padding:"8px 14px",fontSize:12,color:C.greyText}}>No items</div>}
                 </div>
-              )}
+              ))}
             </div>
           );
         })}
-        <div style={{display:"flex",gap:8}}>
-          <input style={{flex:1,padding:"12px 14px",border:"1.5px solid "+C.border,borderRadius:14,fontSize:14,fontFamily:"inherit",outline:"none"}}
-            placeholder="Add new store..." value={newStoreName}
-            onChange={e=>setNewStoreName(e.target.value)}
-            onKeyDown={e=>e.key==="Enter"&&addStore()}/>
-          <button type="button" onClick={addStore} style={{background:C.teal,border:"none",borderRadius:14,padding:"12px 16px",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.white}}>+ Store</button>
-        </div>
+        {regulars.length>0&&(
+          <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+            <div style={{padding:"14px 16px",background:"#FFFBE018",borderBottom:"1px solid #F0D06030"}}>
+              <div style={{fontSize:15,fontWeight:800,color:C.orange}}>⭐ Regular Items</div>
+              <div style={{fontSize:11,color:C.greyText,marginTop:1}}>{regulars.length} saved regulars</div>
+            </div>
+            {regulars.map((r,i)=>(
+              <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<regulars.length-1?"1px solid "+C.border:"none"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,color:C.dark}}>{r.name}</div>
+                  <div style={{fontSize:11,color:C.greyText}}>{r.storeName} / {r.catName}</div>
+                </div>
+                <button type="button" onClick={()=>{LS.set("regularItems",regulars.filter(reg=>reg.id!==r.id));}} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function TodoListScreen({onBack,setTab}){
-  const[todos,setTodos]=useState(()=>initTodoList());
+function ShoppingListScreen({onBack,setSubScreen}){
+  const[list,setList]=useState(()=>initShoppingList());
+  const[expandedStore,setExpandedStore]=useState(null);
+  const[expandedCat,setExpandedCat]=useState({});
+  const[newItem,setNewItem]=useState({});
+  const[newCatName,setNewCatName]=useState({});
+  const[showAddStore,setShowAddStore]=useState(false);
+  const[newStoreName,setNewStoreName]=useState("");
+  const[newStoreColor,setNewStoreColor]=useState(C.teal);
+  const[showAddItem,setShowAddItem]=useState(false);
+  const[newItemName,setNewItemName]=useState("");
+  const[selectedStore,setSelectedStore]=useState(null);
+  const[selectedCatId,setSelectedCatId]=useState(null);
+  const[saveAsRegular,setSaveAsRegular]=useState(false);
+  const[inlineNewStore,setInlineNewStore]=useState(false);
+  const[inlineStoreName,setInlineStoreName]=useState("");
+  const save=l=>{setList(l);LS.set("shoppingList",l);};
+  const storeColors=[C.teal,C.blue,C.coral,C.orange,C.yellow,"#7B5DD9"];
+
+  const toggleItem=(sid,cid,iid)=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.map(i=>i.id!==iid?i:{...i,checked:!i.checked})})})});};
+  const addItem=(sid,cid)=>{
+    const key=sid+cid;const text=(newItem[key]||"").trim();if(!text)return;
+    save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:[...c.items,{id:"i"+Date.now(),name:text,checked:false}]})})});
+    setNewItem(prev=>({...prev,[key]:""}));
+  };
+  const clearChecked=sid=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>({...c,items:c.items.filter(i=>!i.checked)}))})});};
+  const addCategory=sid=>{
+    const text=(newCatName[sid]||"").trim();if(!text)return;
+    save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:[...s.categories,{id:"c"+Date.now(),name:text,items:[]}]})});
+    setNewCatName(prev=>({...prev,[sid]:""}));
+  };
+  const addStore=(name,color)=>{
+    const text=(name||newStoreName).trim();if(!text)return null;
+    const col=color||newStoreColor;
+    const newS={id:"s"+Date.now(),name:text,color:col,categories:[{id:"c"+Date.now(),name:"General",items:[]}]};
+    const l={...list,stores:[...list.stores,newS]};save(l);
+    setNewStoreName("");setNewStoreColor(C.teal);setShowAddStore(false);return newS;
+  };
+  const addInlineStore=()=>{
+    const text=inlineStoreName.trim();if(!text)return;
+    const col=storeColors[list.stores.length%storeColors.length];
+    const newS={id:"s"+Date.now(),name:text,color:col,categories:[{id:"c"+Date.now(),name:"General",items:[]}]};
+    const l={...list,stores:[...list.stores,newS]};save(l);
+    setSelectedStore(newS.id);setSelectedCatId(newS.categories[0].id);
+    setInlineNewStore(false);setInlineStoreName("");
+  };
+  const addItemDirect=()=>{
+    const text=newItemName.trim();if(!text||!selectedStore||!selectedCatId)return;
+    const l={...list,stores:list.stores.map(s=>s.id!==selectedStore?s:{...s,categories:s.categories.map(c=>c.id!==selectedCatId?c:{...c,items:[...c.items,{id:"i"+Date.now(),name:text,checked:false}]})})};
+    save(l);
+    if(saveAsRegular){
+      const selStore=list.stores.find(s=>s.id===selectedStore);
+      const selCat=selStore&&selStore.categories.find(c=>c.id===selectedCatId);
+      if(selStore&&selCat){
+        const regs=LS.get("regularItems",[]);
+        if(!regs.some(r=>r.name.toLowerCase()===text.toLowerCase()&&r.storeId===selectedStore)){
+          LS.set("regularItems",[...regs,{id:"r"+Date.now(),name:text,storeId:selectedStore,storeName:selStore.name,catId:selectedCatId,catName:selCat.name}]);
+        }
+      }
+    }
+    setNewItemName("");setSelectedCatId(null);setSaveAsRegular(false);setShowAddItem(false);
+  };
+  const loadRegulars=()=>{
+    const regs=LS.get("regularItems",[]);if(!regs.length)return;
+    let l={...list};
+    regs.forEach(r=>{
+      const store=l.stores.find(s=>s.id===r.storeId);if(!store)return;
+      const cat=store.categories.find(c=>c.id===r.catId);if(!cat)return;
+      if(!cat.items.some(i=>i.name.toLowerCase()===r.name.toLowerCase()&&!i.checked)){
+        l={...l,stores:l.stores.map(s=>s.id!==r.storeId?s:{...s,categories:s.categories.map(c=>c.id!==r.catId?c:{...c,items:[...c.items,{id:"i"+Date.now()+Math.random(),name:r.name,checked:false}]})})};
+      }
+    });
+    save(l);
+  };
+  const regulars=LS.get("regularItems",[]);
+  const totalItems=list.stores.reduce((a,s)=>a+s.categories.reduce((b,c)=>b+c.items.length,0),0);
+  const checkedTotal=list.stores.reduce((a,s)=>a+s.categories.reduce((b,c)=>b+c.items.filter(i=>i.checked).length,0),0);
+
+  if(showAddItem){
+    const selStore=list.stores.find(s=>s.id===selectedStore)||null;
+    const canAdd=newItemName.trim()&&selectedStore&&selectedCatId;
+    return(
+      <div style={{paddingBottom:80}}>
+        <Header title="Add Item" color={C.teal} onBack={()=>{setShowAddItem(false);setInlineNewStore(false);}} fs={22}/>
+        <Dots/>
+        <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:14}}>
+          <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+            <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:6}}>Item Name</label>
+            <input style={{width:"100%",padding:"11px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box"}}
+              placeholder="What do you need to buy?" value={newItemName} onChange={e=>setNewItemName(e.target.value)} autoFocus/>
+          </div>
+          <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+            <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:10}}>Store</label>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
+              {list.stores.map(s=>(
+                <button type="button" key={s.id} onClick={()=>{setSelectedStore(s.id);setSelectedCatId(null);}} style={{padding:"10px 6px",borderRadius:20,border:"2px solid "+(selectedStore===s.id?s.color:C.border),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:selectedStore===s.id?s.color:C.white,color:selectedStore===s.id?C.white:C.dark,textAlign:"center"}}>{s.name}</button>
+              ))}
+            </div>
+            {!inlineNewStore&&<button type="button" onClick={()=>setInlineNewStore(true)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:C.teal,padding:"4px 0"}}>+ Add New Store</button>}
+            {inlineNewStore&&(
+              <div style={{display:"flex",gap:8,marginTop:6}}>
+                <input style={{flex:1,padding:"8px 10px",border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none"}}
+                  placeholder="New store name..." value={inlineStoreName} onChange={e=>setInlineStoreName(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&addInlineStore()}/>
+                <button type="button" onClick={addInlineStore} style={{background:C.teal,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
+                <button type="button" onClick={()=>setInlineNewStore(false)} style={{background:C.grey,border:"none",borderRadius:10,padding:"8px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.dark}}>✕</button>
+              </div>
+            )}
+          </div>
+          {selStore&&(
+            <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+              <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:10}}>Category</label>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                {selStore.categories.map(c=>(
+                  <button type="button" key={c.id} onClick={()=>setSelectedCatId(c.id)} style={{padding:"10px 6px",borderRadius:20,border:"2px solid "+(selectedCatId===c.id?selStore.color:C.border),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:selectedCatId===c.id?selStore.color:C.white,color:selectedCatId===c.id?C.white:C.dark,textAlign:"center"}}>{c.name}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{background:C.white,borderRadius:20,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)",display:"flex",alignItems:"center",gap:12}}>
+            <div onClick={()=>setSaveAsRegular(!saveAsRegular)} style={{width:22,height:22,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(saveAsRegular?C.teal:C.border),background:saveAsRegular?C.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {saveAsRegular&&<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+            </div>
+            <div style={{cursor:"pointer"}} onClick={()=>setSaveAsRegular(!saveAsRegular)}>
+              <div style={{fontSize:13,fontWeight:700,color:C.dark}}>Save as Regular Item ⭐</div>
+              <div style={{fontSize:11,color:C.greyText,marginTop:2}}>Auto-loads with your regular shop</div>
+            </div>
+          </div>
+          <button type="button" onClick={addItemDirect} disabled={!canAdd} style={{background:canAdd?C.teal:"#D1D5DB",border:"none",borderRadius:20,padding:"16px",cursor:canAdd?"pointer":"default",fontFamily:"inherit",fontSize:16,fontWeight:700,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.3)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            Add to List
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if(showAddStore)return(
+    <div style={{paddingBottom:80}}>
+      <Header title="Add Store" color={C.teal} onBack={()=>setShowAddStore(false)} fs={22}/>
+      <Dots/>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+          <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:6}}>Store Name</label>
+          <input style={{width:"100%",padding:"11px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box"}}
+            placeholder="e.g. Walmart, Target, Costco..." value={newStoreName} onChange={e=>setNewStoreName(e.target.value)} autoFocus/>
+        </div>
+        <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+          <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:10}}>Colour</label>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {storeColors.map(c=>(
+              <button type="button" key={c} onClick={()=>setNewStoreColor(c)} style={{width:40,height:40,borderRadius:"50%",background:c,border:newStoreColor===c?"3px solid "+C.dark:"3px solid transparent",cursor:"pointer",flexShrink:0}}/>
+            ))}
+          </div>
+        </div>
+        <button type="button" onClick={()=>addStore()} style={{background:C.teal,border:"none",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",fontSize:16,fontWeight:700,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          Add Store
+        </button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{paddingBottom:80}}>
+      <Header title="Shopping List" color={C.teal} onBack={onBack} fs={24}/>
+      <Dots/>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:10}}>
+        {regulars.length>0&&(
+          <div style={{background:"#FFFBE0",borderRadius:20,padding:"14px 16px",border:"1.5px solid #F0D060",display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:24}}>⭐</span>
+            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:C.dark}}>Regular Items</div><div style={{fontSize:11,color:C.greyText,marginTop:1}}>{regulars.length} saved items</div></div>
+            <button type="button" onClick={loadRegulars} style={{background:C.orange,border:"none",borderRadius:12,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:C.white}}>Load All</button>
+          </div>
+        )}
+        {list.stores.length===0&&<div style={{background:C.white,borderRadius:20,padding:"40px 20px",textAlign:"center",color:C.greyText,fontSize:14,boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+          <div style={{fontSize:40,marginBottom:12}}>🛒</div>
+          <div style={{fontWeight:700,color:C.dark,marginBottom:4}}>No stores yet!</div>
+          <div>Tap Add Store below to get started.</div>
+        </div>}
+        {list.stores.map(store=>{
+          const totalSt=store.categories.reduce((a,c)=>a+c.items.length,0);
+          const checkedSt=store.categories.reduce((a,c)=>a+c.items.filter(i=>i.checked).length,0);
+          const isOpen=expandedStore===store.id;
+          return(
+            <div key={store.id} style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+              <div style={{display:"flex",alignItems:"center",padding:"14px 16px",background:store.color+"18",borderBottom:isOpen?("1px solid "+store.color+"30"):"none"}}>
+                <button type="button" onClick={()=>setExpandedStore(isOpen?null:store.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:20}}>🛒</span>
+                  <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800,color:store.color}}>{store.name}</div><div style={{fontSize:11,color:C.greyText,marginTop:1}}>{checkedSt}/{totalSt} items</div></div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {isOpen&&checkedSt>0&&<button type="button" onClick={()=>clearChecked(store.id)} style={{border:"none",background:store.color,borderRadius:10,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:C.white,marginLeft:8}}>Clear done</button>}
+              </div>
+              {isOpen&&store.categories.map(cat=>{
+                const catKey=expandedCat[store.id+cat.id];
+                return(
+                  <div key={cat.id} style={{marginBottom:2}}>
+                    <div style={{display:"flex",alignItems:"center",padding:"8px 16px",cursor:"pointer"}} onClick={()=>setExpandedCat(prev=>({...prev,[store.id+cat.id]:!prev[store.id+cat.id]}))}>
+                      <span style={{fontSize:12,fontWeight:700,color:store.color,flex:1}}>{cat.name} <span style={{color:C.greyText,fontWeight:400}}>({cat.items.length})</span></span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:catKey?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    {catKey&&(
+                      <div style={{paddingLeft:16}}>
+                        {cat.items.map(item=>(
+                          <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 16px 8px 0",borderBottom:"1px solid "+C.border}}>
+                            <div onClick={()=>{const l={...list,stores:list.stores.map(s=>s.id!==store.id?s:{...s,categories:s.categories.map(c=>c.id!==cat.id?c:{...c,items:c.items.map(i=>i.id!==item.id?i:{...i,checked:!i.checked})})})});save(l);}} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:"pointer",border:"2px solid "+(item.checked?store.color:C.border),background:item.checked?store.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                              {item.checked&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                            </div>
+                            <span style={{fontSize:13,color:C.dark,textDecoration:item.checked?"line-through":"none",opacity:item.checked?0.5:1,flex:1}}>{item.name}</span>
+                          </div>
+                        ))}
+                        <div style={{display:"flex",gap:8,padding:"8px 16px 8px 0"}}>
+                          <input style={{flex:1,padding:"7px 10px",border:"1px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:"inherit",color:C.dark,background:C.white,outline:"none"}}
+                            placeholder="Quick add..." value={newItem[store.id+cat.id]||""}
+                            onChange={e=>setNewItem(prev=>({...prev,[store.id+cat.id]:e.target.value}))}
+                            onKeyDown={e=>e.key==="Enter"&&addItem(store.id,cat.id)}/>
+                          <button type="button" onClick={()=>addItem(store.id,cat.id)} style={{background:store.color,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        {totalItems>0&&<button type="button" onClick={()=>setSubScreen("shoppingListAll")} style={{width:"100%",background:"none",border:"none",borderTop:"none",padding:"4px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:C.teal,fontSize:13,fontWeight:700}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          View All Items
+        </button>}
+        <button type="button" onClick={()=>setShowAddItem(true)} style={{background:C.teal,border:"none",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",fontSize:16,fontWeight:700,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          Add Item
+        </button>
+        <button type="button" onClick={()=>setShowAddStore(true)} style={{background:C.grey,border:"none",borderRadius:20,padding:"14px",cursor:"pointer",fontFamily:"inherit",fontSize:15,fontWeight:700,color:C.dark,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:20}}>🏪</span> Add Store
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TodoListScreen({onBack,setTab,todos:todosProp,setTodos:setTodosProp}){
+  const[localTodos,setLocalTodos]=useState(()=>initTodoList());
+  const todos=todosProp||localTodos;
+  const setTodos=todosProp?setTodosProp:setLocalTodos;
   const[showAdd,setShowAdd]=useState(false);
   const[newText,setNewText]=useState("");
   const[newDate,setNewDate]=useState("");
@@ -1253,6 +1449,7 @@ export default function App(){
   useEffect(()=>{const t=setTimeout(()=>setSplash(false),2800);return()=>clearTimeout(t);},[]);
   const[tab,setTab]=useState("home");const[sub,setSub]=useState(null);const[editId,setEditId]=useState(null);
   const[tasks,setTasks]=useState(()=>initTasks());const[timeChores,setTimeChores]=useState(()=>initTimeChores());const[randomChores,setRandomChores]=useState(()=>initRandomChores());const[completedChores,setCompletedChores]=useState(()=>initCompletedChores());
+  const[todos,setTodos]=useState(()=>initTodoList());
   const goTab=useCallback(t=>{setTab(t);setSub(null);},[]);const back=screen=>()=>setSub(screen||null);
   useEffect(()=>{
     const schedule=()=>{
@@ -1293,13 +1490,14 @@ export default function App(){
     if(sub==="challengePaper")   return <ChecklistScreen title="Paper Chase" color={C.blue} data={CHALLENGE_PAPER} storageKey="challengePaper" onBack={back("more")}/>;
     if(sub==="challengeDigital") return <ChecklistScreen title="Digital Life" color={C.teal} data={CHALLENGE_DIGITAL} storageKey="challengeDigital" onBack={back("more")}/>;
     if(sub==="challengeWholeHome") return <ChecklistScreen title="Whole Home Reset" color={C.coral} data={CHALLENGE_WHOLE_HOME} storageKey="challengeWholeHome" onBack={back("more")}/>;
-    if(sub==="shoppingList")    return <ShoppingListScreen onBack={back("more")}/>;
-    if(sub==="todoList")        return <TodoListScreen onBack={back("more")} setTab={goTab}/>;
+    if(sub==="shoppingList")    return <ShoppingListScreen onBack={back("more")} setSubScreen={setSub}/>;
+    if(sub==="shoppingListAll") return <AllShoppingItemsScreen onBack={back("shoppingList")}/>;
+    if(sub==="todoList")        return <TodoListScreen onBack={back("more")} setTab={goTab} todos={todos} setTodos={setTodos}/>;
     if(sub==="adhd_overwhelmed") return <ADHDPlaceholder title="I Feel Overwhelmed" emoji="😰" color={C.blue} bg="#EEF6FF" onBack={back("more")}/>;
     if(sub==="adhd_lowenergy")   return <ADHDPlaceholder title="Low Energy Mode" emoji="🔋" color={C.orange} bg="#FFFBE0" onBack={back("more")}/>;
     if(sub==="adhd_cantstart")   return <ADHDPlaceholder title="I Can't Get Started" emoji="🪨" color={C.teal} bg="#E8F7F2" onBack={back("more")}/>;
     if(sub==="adhd_reset")       return <ADHDPlaceholder title="Help Me Reset" emoji="🔄" color={C.coral} bg="#FDEEF1" onBack={back("more")}/>;
-    if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId} completedChores={completedChores} setTab={goTab}/>;
+    if(tab==="home")     return <HomeScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId} completedChores={completedChores} setTab={goTab} todos={todos} setTodos={setTodos}/>;
     if(tab==="tasks")    return <TasksScreen tasks={tasks} setTasks={setTasks} setSubScreen={setSub} setEditId={setEditId}/>;
     if(tab==="random")   return <RandomTab randomChores={randomChores} setRandomChores={setRandomChores} completedChores={completedChores} setCompletedChores={setCompletedChores} setSubScreen={setSub}/>;
     if(tab==="progress") return <ProgressScreen tasks={tasks} completedChores={completedChores} setSubScreen={setSub}/>;
