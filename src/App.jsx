@@ -138,6 +138,32 @@ const SPEED_CLEAN_ROOM_DATA={
   Everywhere:{color:C.teal,emoji:"🏠",items:["Pick up clutter","Vacuum carpet, Rugs & other areas","Quickly mop floors","Sweep floor","Clean Mirror & glass surfaces","Quickly empty all trash bins","Wipe all tables & Furniture"]},
 };
 
+function initShoppingList(){
+  const ex=LS.get("shoppingList",null);
+  if(ex)return ex;
+  const def={stores:[
+    {id:"s1",name:"Grocery Store",color:C.teal,categories:[
+      {id:"c1",name:"Produce",items:[]},{id:"c2",name:"Dairy & Eggs",items:[]},
+      {id:"c3",name:"Meat & Fish",items:[]},{id:"c4",name:"Pantry",items:[]},
+      {id:"c5",name:"Frozen",items:[]},{id:"c6",name:"Household",items:[]}
+    ]},
+    {id:"s2",name:"Costco",color:C.blue,categories:[
+      {id:"c7",name:"Produce",items:[]},{id:"c8",name:"Meat",items:[]},
+      {id:"c9",name:"Pantry & Bulk",items:[]},{id:"c10",name:"Household",items:[]},
+      {id:"c11",name:"Clothing",items:[]},{id:"c12",name:"Electronics",items:[]}
+    ]},
+    {id:"s3",name:"Pharmacy",color:C.coral,categories:[
+      {id:"c13",name:"Medications",items:[]},{id:"c14",name:"Personal Care",items:[]},
+      {id:"c15",name:"Vitamins",items:[]}
+    ]}
+  ]};
+  LS.set("shoppingList",def);return def;
+}
+function initTodoList(){
+  const ex=LS.get("todoList",null);
+  if(ex)return ex;
+  LS.set("todoList",[]);return[];
+}
 function initTasks(){const ex=LS.get("tasks",null);if(ex)return ex;const d=[{id:1,taskName:"Make dinner",category:"Daily",day:"Today",minutes:30,completed:false,notes:"",room:"Kitchen"},{id:2,taskName:"Kitchen counters",category:"Daily",day:"Today",minutes:10,completed:false,notes:"",room:"Kitchen"},{id:3,taskName:"Vacuum upstairs",category:"Daily",day:"Today",minutes:20,completed:false,notes:"",room:"Upstairs"},{id:4,taskName:"Pick up toys",category:"Daily",day:"Today",minutes:5,completed:false,notes:"",room:"Living Room"},{id:5,taskName:"Declutter counter",category:"Daily",day:"Today",minutes:15,completed:false,notes:"",room:"Kitchen"}];LS.set("tasks",d);return d;}
 function initTimeChores(){const ex=LS.get("timeChores",null);if(ex)return ex;const d=[{id:1,choreName:"Wipe down stovetop",minutes:5,completed:false},{id:2,choreName:"Take out recycling",minutes:5,completed:false},{id:3,choreName:"Tidy living room",minutes:10,completed:false},{id:4,choreName:"Clean bathroom sink",minutes:10,completed:false},{id:5,choreName:"Sweep kitchen floor",minutes:10,completed:false},{id:6,choreName:"Wipe kitchen counters",minutes:10,completed:false},{id:7,choreName:"Clean toilet",minutes:15,completed:false},{id:8,choreName:"Mop kitchen floor",minutes:20,completed:false}];LS.set("timeChores",d);return d;}
 function initRandomChores(){const ex=LS.get("randomChores",null);if(ex)return ex;const d=[{id:1,choreName:"Clean baseboards",minutes:15},{id:2,choreName:"Dust vents",minutes:10},{id:3,choreName:"Organize junk drawer",minutes:20},{id:4,choreName:"Wipe light switches",minutes:5},{id:5,choreName:"Clean out freezer",minutes:30},{id:6,choreName:"Wash windows",minutes:30},{id:7,choreName:"Vacuum under furniture",minutes:20}];LS.set("randomChores",d);return d;}
@@ -361,7 +387,12 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
     if(completedDates.includes(d)){streak++;}else if(si>0){break;}
   }
   const weekDays=["M","T","W","T","F","S","S"];
-  const sorted=allToday;
+  const todosToday=LS.get("todoList",[]).filter(t=>t.dueDate===new Date().toISOString().split("T")[0]);
+  const toggleTodo=id=>{
+    const tds=LS.get("todoList",[]);
+    LS.set("todoList",tds.map(t=>t.id===id?{...t,completed:!t.completed}:t));
+  };
+  const sorted=[...allToday,...todosToday.map(t=>({...t,_isTodo:true}))];
   const dailyDone=tasks.filter(t=>t.category==="Daily"&&t.completed).length;
   const dailyTotal=Math.max(tasks.filter(t=>t.category==="Daily").length,1);
   const weeklyDone=tasks.filter(t=>t.category==="Weekly"&&t.completed).length;
@@ -419,20 +450,27 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
                 boxShadow:animating[task.id]==="pop"?"0 6px 20px rgba(0,0,0,0.13)":"none",
                 borderRadius:8,position:"relative",zIndex:animating[task.id]==="pop"?2:0,
                 background:C.white}}>
-                <div onClick={()=>toggle(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(task.completed?DC[ti%DC.length]:C.border),background:task.completed?DC[ti%DC.length]:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  {task.completed&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                </div>
-                <div style={{width:38,height:38,borderRadius:10,background:col+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{emoji}</div>
-                <div style={{flex:1,cursor:"pointer"}} onClick={()=>toggle(task.id)}>
-                  <div style={{fontSize:14,fontWeight:700,color:C.dark,textDecoration:task.completed?"line-through":"none",opacity:task.completed?0.5:1}}>{task.taskName}</div>
+                {task._isTodo?(
+                  <div onClick={()=>toggleTodo(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(task.completed?C.blue:C.border),background:task.completed?C.blue:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {task.completed&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </div>
+                ):(
+                  <div onClick={()=>toggle(task.id)} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(task.completed?DC[ti%DC.length]:C.border),background:task.completed?DC[ti%DC.length]:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {task.completed&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </div>
+                )}
+                <div style={{width:38,height:38,borderRadius:10,background:(task._isTodo?C.blue:col)+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{task._isTodo?"📝":emoji}</div>
+                <div style={{flex:1,cursor:"pointer"}} onClick={()=>task._isTodo?toggleTodo(task.id):toggle(task.id)}>
+                  <div style={{fontSize:14,fontWeight:700,color:C.dark,textDecoration:task.completed?"line-through":"none",opacity:task.completed?0.5:1}}>{task._isTodo?task.text:task.taskName}</div>
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:3}}>
-                    {task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:col+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.room}</span>}
-                    {task.category==="Weekly"&&task.day&&<span style={{fontSize:10,fontWeight:700,color:C.blue,background:C.blue+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.day}</span>}
-                    {task.category==="Monthly"&&task.months&&task.months!=="every"&&!(Array.isArray(task.months)&&task.months.includes("every"))&&<span style={{fontSize:10,fontWeight:700,color:"#9B59B6",background:"#9B59B620",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.day==="Last day"?"Last day":(task.day.replace("Day ","")+" "+curMonth)}</span>}
+                    {task._isTodo&&<span style={{fontSize:10,fontWeight:700,color:C.blue,background:C.blue+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>To-Do List</span>}
+                    {!task._isTodo&&task.room&&task.room!=="General"&&<span style={{fontSize:10,fontWeight:700,color:col,background:col+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.room}</span>}
+                    {!task._isTodo&&task.category==="Weekly"&&task.day&&<span style={{fontSize:10,fontWeight:700,color:C.blue,background:C.blue+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.day}</span>}
+                    {!task._isTodo&&task.category==="Monthly"&&task.months&&task.months!=="every"&&!(Array.isArray(task.months)&&task.months.includes("every"))&&<span style={{fontSize:10,fontWeight:700,color:"#9B59B6",background:"#9B59B620",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{task.day==="Last day"?"Last day":(task.day.replace("Day ","")+" "+curMonth)}</span>}
                   </div>
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12}}>{Ic.clock()}<span>{task.minutes}m</span></div>
-                <button type="button" onClick={e=>{e.stopPropagation();setEditId(task.id);setSubScreen("editTask");}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button>
+                {!task._isTodo&&<div style={{display:"flex",alignItems:"center",gap:3,color:C.greyText,fontSize:12}}>{Ic.clock()}<span>{task.minutes}m</span></div>}
+                {!task._isTodo&&<button type="button" onClick={e=>{e.stopPropagation();setEditId(task.id);setSubScreen("editTask");}} style={{width:30,height:30,borderRadius:8,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{Ic.edit()}</button>}
               </div>
             );
           })}
@@ -522,6 +560,34 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
           </div>
         </div>
       </div>
+      {(()=>{
+        const tds=LS.get("todoList",[]);
+        const now=new Date().toISOString().split("T")[0];
+        const upcoming=tds.filter(t=>!t.completed&&t.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,3);
+        const overdue=tds.filter(t=>!t.completed&&t.dueDate&&t.dueDate<now).length;
+        if(upcoming.length===0)return null;
+        return(
+          <div style={{margin:"0 16px 12px",background:C.white,borderRadius:20,padding:"14px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <span style={{fontSize:11,fontWeight:700,color:C.blue,letterSpacing:1}}>UPCOMING TO-DOS</span>
+              {overdue>0&&<span style={{fontSize:10,fontWeight:700,color:C.coral,background:"#FDEEF1",padding:"2px 8px",borderRadius:20}}>{overdue} overdue</span>}
+            </div>
+            {upcoming.map(t=>{
+              const diff=Math.ceil((new Date(t.dueDate)-new Date(now))/86400000);
+              const col=diff<0?C.coral:diff===0?C.orange:diff<=2?"#B8860B":C.greyText;
+              const label=diff<0?Math.abs(diff)+"d overdue":diff===0?"Today":diff===1?"Tomorrow":new Date(t.dueDate).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+              return(
+                <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid "+C.border}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:col,flexShrink:0}}/>
+                  <span style={{flex:1,fontSize:13,color:C.dark}}>{t.text}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:col}}>{label}</span>
+                </div>
+              );
+            })}
+            <button type="button" onClick={()=>setSubScreen("todoList")} style={{width:"100%",background:"none",border:"none",borderTop:"1px solid "+C.border,padding:"8px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:C.blue,marginTop:6}}>View all to-dos</button>
+          </div>
+        );
+      })()}
       <div style={{margin:"0 16px 12px",background:"#F4FBF7",borderRadius:20,padding:"14px 18px",border:"1px solid #C8EDD9",display:"flex",alignItems:"center",gap:14}}>
         <span style={{fontSize:28,flexShrink:0}}>💚</span>
         <div style={{flex:1}}>
@@ -666,10 +732,13 @@ function ProgressScreen({tasks,completedChores,setSubScreen}){
   const weeklyTotal=Math.max(tasks.filter(t=>t.category==="Weekly").length,1);
   const monthlyDone=tasks.filter(t=>t.category==="Monthly"&&t.completed).length;
   const monthlyTotal=Math.max(tasks.filter(t=>t.category==="Monthly").length,1);
-  const cats=[{label:"Daily Tasks",done:dailyDone,total:dailyTotal,color:C.orange},{label:"Weekly Tasks",done:weeklyDone,total:weeklyTotal,color:C.yellow},{label:"Monthly Tasks",done:monthlyDone,total:monthlyTotal,color:C.coral},{label:"Random Chores",done:completedChores.length,total:Math.max(completedChores.length,12),color:C.teal}];
+  const tdList=LS.get("todoList",[]);
+  const tdDone=tdList.filter(t=>t.completed).length;
+  const tdTotal=Math.max(tdList.length,1);
+  const cats=[{label:"Daily Tasks",done:dailyDone,total:dailyTotal,color:C.orange},{label:"Weekly Tasks",done:weeklyDone,total:weeklyTotal,color:C.yellow},{label:"Monthly Tasks",done:monthlyDone,total:monthlyTotal,color:C.coral},{label:"Random Chores",done:completedChores.length,total:Math.max(completedChores.length,12),color:C.teal},{label:"To-Do List",done:tdDone,total:tdTotal,color:C.blue}];
   const rooms=ROOMS.filter(r=>tasks.some(t=>t.room===r));
     let streak=0;for(let i=0;i<365;i++){const d=new Date(Date.now()-i*86400000).toISOString().split("T")[0];if(completedDates.includes(d)){streak++;}else if(i>0){break;}}
-  return(<div style={{paddingBottom:80}} onClick={()=>setActiveBar(null)}><div style={{padding:"20px 20px 8px",textAlign:"center"}}><h2 style={{margin:"0 0 6px",fontSize:30,fontWeight:900,letterSpacing:1,color:C.teal,textTransform:"uppercase"}}>Progress</h2></div><Dots/><div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:14}}><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:11,fontWeight:700,color:C.teal,letterSpacing:1,marginBottom:12}}>TODAY'S PROGRESS</div><ProgressBar pct={pct} done={done} total={total} minsDone={minsDone} accent={C.teal} accentEnd="#3a9e76"/></div><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:14}}>By Day (This Week)</div><div style={{display:"flex",alignItems:"flex-end",gap:8,height:140}}>{weekDays.map((d,i)=>(<div key={d} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6,cursor:"pointer",position:"relative"}} onClick={e=>{e.stopPropagation();setActiveBar(activeBar===i?null:i);}}>{activeBar===i&&(<div style={{position:"absolute",top:-32,left:"50%",transform:"translateX(-50%)",background:C.dark,color:C.white,fontSize:11,fontWeight:700,borderRadius:8,padding:"4px 8px",whiteSpace:"nowrap",zIndex:10}}>{barV[i]} task{barV[i]!==1?"s":""}<div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"5px solid transparent",borderRight:"5px solid transparent",borderTop:`5px solid ${C.dark}`}}/></div>)}<div style={{width:"100%",borderRadius:6,background:barC[i],minHeight:4,height:barH[i],opacity:activeBar!==null&&activeBar!==i?0.4:1}}/><div style={{fontSize:10,color:activeBar===i?barC[i]:C.greyText,fontWeight:activeBar===i?800:600,whiteSpace:"nowrap"}}>{d}</div></div>))}</div><div style={{fontSize:11,color:C.greyText,marginTop:8,textAlign:"center"}}>Tap a bar to see the count</div></div><div style={{background:"linear-gradient(135deg,#FFF8F0,#FFF0DC)",borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",border:"1.5px solid #FFE0A0"}}><div style={{fontSize:11,fontWeight:700,color:C.orange,letterSpacing:1,marginBottom:14}}>CURRENT STREAK</div><div style={{display:"flex",alignItems:"center",gap:16}}><div style={{fontSize:44,lineHeight:1,flexShrink:0}}>🔥</div><div style={{flex:1}}><div style={{fontSize:34,fontWeight:900,color:C.dark,lineHeight:1}}>{streak} <span style={{fontSize:20,fontWeight:700}}>{streak===1?"day":"days"}</span></div><div style={{fontSize:13,color:"#7A5C2E",marginTop:5,fontWeight:600}}>{streak===0?"Start your streak today!":streak===1?"Great start — keep it going!":streak<5?"Nice work! Keep it up!":streak<10?"You're on fire!":"Absolutely unstoppable!"}</div></div></div>{streak>0&&<div style={{marginTop:14,display:"flex",gap:6,flexWrap:"wrap"}}>{Array.from({length:Math.min(streak,7)},(_,i)=>(<div key={i} style={{width:30,height:30,borderRadius:"50%",background:C.orange,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔥</div>))}{streak>7&&<div style={{width:30,height:30,borderRadius:"50%",background:"#FFD580",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:C.dark}}>+{streak-7}</div>}</div>}</div><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:14}}>This Month</div>{cats.map(cat=>(<div key={cat.label} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:13,color:C.dark}}>{cat.label}</span><span style={{fontSize:13,fontWeight:700,color:C.dark}}>{cat.done}/{cat.total}</span></div><div style={{height:8,background:C.grey,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${(cat.done/cat.total)*100}%`,background:cat.color,borderRadius:4}}/></div></div>))}</div><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:14}}>By Room / Area</div>{rooms.length===0?<div style={{fontSize:13,color:C.greyText,textAlign:"center",padding:"8px 0"}}>Add rooms to your tasks to see a breakdown here.</div>:rooms.map(r=>{const rt=tasks.filter(t=>t.room===r),rd=rt.filter(t=>t.completed).length,rp=rt.length?Math.round((rd/rt.length)*100):0,col=RC[r]||C.greyText;return(<div key={r} style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:10,height:10,borderRadius:"50%",background:col}}/><span style={{fontSize:13,fontWeight:600,color:C.dark}}>{r}</span></div><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:12,color:C.greyText}}>{rd}/{rt.length}</span><span style={{fontSize:12,fontWeight:700,color:col}}>{rp}%</span></div></div><div style={{height:8,background:C.grey,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${rp}%`,background:col,borderRadius:4,transition:"width 0.4s"}}/></div></div>);})}</div><button type="button" onClick={()=>setSubScreen("completedChores")} style={{background:C.teal,border:"none",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%"}}><div style={{width:32,height:32,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span style={{fontSize:18,fontWeight:700,color:C.white}}>Completed Chores</span></button></div></div>);
+  return(<div style={{paddingBottom:80}} onClick={()=>setActiveBar(null)}><div style={{padding:"20px 20px 8px",textAlign:"center"}}><h2 style={{margin:"0 0 6px",fontSize:30,fontWeight:900,letterSpacing:1,color:C.teal,textTransform:"uppercase"}}>Progress</h2></div><Dots/><div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:14}}><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:11,fontWeight:700,color:C.teal,letterSpacing:1,marginBottom:12}}>TODAY'S PROGRESS</div><ProgressBar pct={pct} done={done} total={total} minsDone={minsDone} accent={C.teal} accentEnd="#3a9e76"/></div><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:14}}>By Day (This Week)</div><div style={{display:"flex",alignItems:"flex-end",gap:8,height:140}}>{weekDays.map((d,i)=>(<div key={d} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6,cursor:"pointer",position:"relative"}} onClick={e=>{e.stopPropagation();setActiveBar(activeBar===i?null:i);}}>{activeBar===i&&(<div style={{position:"absolute",top:-32,left:"50%",transform:"translateX(-50%)",background:C.dark,color:C.white,fontSize:11,fontWeight:700,borderRadius:8,padding:"4px 8px",whiteSpace:"nowrap",zIndex:10}}>{barV[i]} task{barV[i]!==1?"s":""}<div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"5px solid transparent",borderRight:"5px solid transparent",borderTop:`5px solid ${C.dark}`}}/></div>)}<div style={{width:"100%",borderRadius:6,background:barC[i],minHeight:4,height:barH[i],opacity:activeBar!==null&&activeBar!==i?0.4:1}}/><div style={{fontSize:10,color:activeBar===i?barC[i]:C.greyText,fontWeight:activeBar===i?800:600,whiteSpace:"nowrap"}}>{d}</div></div>))}</div><div style={{fontSize:11,color:C.greyText,marginTop:8,textAlign:"center"}}>Tap a bar to see the count</div></div><div style={{background:"linear-gradient(135deg,#FFF8F0,#FFF0DC)",borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",border:"1.5px solid #FFE0A0"}}><div style={{fontSize:11,fontWeight:700,color:C.orange,letterSpacing:1,marginBottom:14}}>CURRENT STREAK</div><div style={{display:"flex",alignItems:"center",gap:16}}><div style={{fontSize:44,lineHeight:1,flexShrink:0}}>🔥</div><div style={{flex:1}}><div style={{fontSize:34,fontWeight:900,color:C.dark,lineHeight:1}}>{streak} <span style={{fontSize:20,fontWeight:700}}>{streak===1?"day":"days"}</span></div><div style={{fontSize:13,color:"#7A5C2E",marginTop:5,fontWeight:600}}>{streak===0?"Start your streak today!":streak===1?"Great start — keep it going!":streak<5?"Nice work! Keep it up!":streak<10?"You're on fire!":"Absolutely unstoppable!"}</div></div></div>{streak>0&&<div style={{marginTop:14,display:"flex",gap:6,flexWrap:"wrap"}}>{Array.from({length:Math.min(streak,7)},(_,i)=>(<div key={i} style={{width:30,height:30,borderRadius:"50%",background:C.orange,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔥</div>))}{streak>7&&<div style={{width:30,height:30,borderRadius:"50%",background:"#FFD580",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:C.dark}}>+{streak-7}</div>}</div>}</div><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:14}}>This Month</div>{cats.map(cat=>(<div key={cat.label} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:13,color:C.dark}}>{cat.label}</span><span style={{fontSize:13,fontWeight:700,color:C.dark}}>{cat.done}/{cat.total}</span></div><div style={{height:8,background:C.grey,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${(cat.done/cat.total)*100}%`,background:cat.color,borderRadius:4}}/></div></div>))}</div><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,fontWeight:700,color:C.dark,marginBottom:14}}>By Room / Area</div>{rooms.length===0?<div style={{fontSize:13,color:C.greyText,textAlign:"center",padding:"8px 0"}}>Add rooms to your tasks to see a breakdown here.</div>:rooms.map((r,ri)=>{const rt=tasks.filter(t=>t.room===r),rd=rt.filter(t=>t.completed).length,rp=rt.length?Math.round((rd/rt.length)*100):0,col=DC[ri%DC.length];return(<div key={r} style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:10,height:10,borderRadius:"50%",background:col}}/><span style={{fontSize:13,fontWeight:600,color:C.dark}}>{r}</span></div><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:12,color:C.greyText}}>{rd}/{rt.length}</span><span style={{fontSize:12,fontWeight:700,color:col}}>{rp}%</span></div></div><div style={{height:8,background:C.grey,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${rp}%`,background:col,borderRadius:4,transition:"width 0.4s"}}/></div></div>);})}</div><button type="button" onClick={()=>setSubScreen("completedChores")} style={{background:C.teal,border:"none",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%"}}><div style={{width:32,height:32,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span style={{fontSize:18,fontWeight:700,color:C.white}}>Completed Chores</span></button></div></div>);
 }
 
 function SpeedCleanTab({setSubScreen,onBack}){return(<div style={{paddingBottom:80}}><Header title="Speed Cleaning" color={C.teal} onBack={onBack} fs={24}/><Dots/><div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}><div style={{background:C.white,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.07)"}}><div style={{fontSize:13,color:C.greyText,lineHeight:1.6}}>Choose your speed cleaning mode — pick by how much time you have, or go room by room.</div></div><button type="button" onClick={()=>setSubScreen("speedCleanTime")} style={{background:"#E8F7F2",border:"1.5px solid #A8D9C8",borderRadius:20,padding:"20px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left"}}><span style={{fontSize:32,flexShrink:0}}>⏱️</span><div style={{flex:1}}><div style={{fontSize:17,fontWeight:800,color:C.teal}}>By Time</div><div style={{fontSize:12,color:C.greyText,marginTop:3}}>5, 10, 20, 30, 45, 60 or 90 minutes</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button><button type="button" onClick={()=>setSubScreen("speedCleanRoom")} style={{background:"#FEF3E2",border:"1.5px solid #F0C888",borderRadius:20,padding:"20px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",textAlign:"left"}}><span style={{fontSize:32,flexShrink:0}}>🏠</span><div style={{flex:1}}><div style={{fontSize:17,fontWeight:800,color:C.orange}}>Room by Room</div><div style={{fontSize:12,color:C.greyText,marginTop:3}}>Kitchen, Bathroom, Bedroom, Living Room</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button></div></div>);}
@@ -711,6 +780,262 @@ const CHALLENGE_WHOLE_HOME={
   "Bathrooms":{emoji:"🚿",items:["Clear out expired medicines and toiletries","Sort through makeup and skincare","Declutter under the sink","Organise towels and flannels","Wipe all surfaces and mirrors"]}
 };
 
+function ShoppingListScreen({onBack}){
+  const[list,setList]=useState(()=>initShoppingList());
+  const[expandedStore,setExpandedStore]=useState(null);
+  const[expandedCat,setExpandedCat]=useState({});
+  const[newItem,setNewItem]=useState({});
+  const[newCatName,setNewCatName]=useState({});
+  const[newStoreName,setNewStoreName]=useState("");
+  const[editMode,setEditMode]=useState(false);
+  const save=l=>{setList(l);LS.set("shoppingList",l);};
+  const toggleItem=(sid,cid,iid)=>{
+    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.map(i=>i.id!==iid?i:{...i,checked:!i.checked})})})};
+    save(l);
+  };
+  const addItem=(sid,cid)=>{
+    const key=sid+cid;const text=(newItem[key]||"").trim();if(!text)return;
+    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:[...c.items,{id:"i"+Date.now(),name:text,checked:false}]})})};
+    save(l);setNewItem(prev=>({...prev,[key]:""}));
+  };
+  const deleteItem=(sid,cid,iid)=>{
+    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.filter(i=>i.id!==iid)})})};save(l);
+  };
+  const clearChecked=(sid)=>{
+    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>({...c,items:c.items.filter(i=>!i.checked)}))})};save(l);
+  };
+  const addCategory=(sid)=>{
+    const text=(newCatName[sid]||"").trim();if(!text)return;
+    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:[...s.categories,{id:"c"+Date.now(),name:text,items:[]}]})};
+    save(l);setNewCatName(prev=>({...prev,[sid]:""}));
+  };
+  const addStore=()=>{
+    const text=newStoreName.trim();if(!text)return;
+    const colors=[C.teal,C.blue,C.coral,C.orange,"#7B5DD9"];
+    const l={...list,stores:[...list.stores,{id:"s"+Date.now(),name:text,color:colors[list.stores.length%5],categories:[{id:"c"+Date.now(),name:"General",items:[]}]}]};
+    save(l);setNewStoreName("");
+  };
+  const deleteStore=(sid)=>{const l={...list,stores:list.stores.filter(s=>s.id!==sid)};save(l);};
+  const deleteCategory=(sid,cid)=>{
+    const l={...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.filter(c=>c.id!==cid)})};save(l);
+  };
+
+  return(
+    <div style={{paddingBottom:80}}>
+      <Header title="Shopping List" color={C.teal} onBack={onBack} fs={24}
+        rightEl={<button type="button" onClick={()=>setEditMode(!editMode)} style={{border:"none",background:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:editMode?C.coral:C.teal,fontFamily:"inherit",padding:"4px 8px"}}>{editMode?"Done":"Edit"}</button>}
+      />
+      <Dots/>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:10}}>
+        {list.stores.map(store=>{
+          const totalItems=store.categories.reduce((a,c)=>a+c.items.length,0);
+          const checkedItems=store.categories.reduce((a,c)=>a+c.items.filter(i=>i.checked).length,0);
+          const isOpen=expandedStore===store.id;
+          return(
+            <div key={store.id} style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+              <div style={{display:"flex",alignItems:"center",padding:"14px 16px",background:store.color+"15",borderBottom:isOpen?("1px solid "+store.color+"30"):"none"}}>
+                {editMode&&<button type="button" onClick={()=>deleteStore(store.id)} style={{border:"none",background:"none",cursor:"pointer",marginRight:8,padding:2,flexShrink:0}}>{Ic.trash()}</button>}
+                <button type="button" onClick={()=>setExpandedStore(isOpen?null:store.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:20}}>🛒</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:15,fontWeight:800,color:store.color}}>{store.name}</div>
+                    <div style={{fontSize:11,color:C.greyText,marginTop:1}}>{checkedItems}/{totalItems} items</div>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s",flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {isOpen&&checkedItems>0&&!editMode&&<button type="button" onClick={()=>clearChecked(store.id)} style={{border:"none",background:store.color,borderRadius:10,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:C.white,marginLeft:8,flexShrink:0}}>Clear done</button>}
+              </div>
+              {isOpen&&(
+                <div style={{padding:"8px 0"}}>
+                  {store.categories.map(cat=>{
+                    const catKey=expandedCat[store.id+cat.id];
+                    return(
+                      <div key={cat.id} style={{marginBottom:2}}>
+                        <div style={{display:"flex",alignItems:"center",padding:"8px 16px",cursor:"pointer"}} onClick={()=>setExpandedCat(prev=>({...prev,[store.id+cat.id]:!prev[store.id+cat.id]}))}>
+                          {editMode&&<button type="button" onClick={e=>{e.stopPropagation();deleteCategory(store.id,cat.id);}} style={{border:"none",background:"none",cursor:"pointer",marginRight:6,padding:2}}>{Ic.trash()}</button>}
+                          <span style={{fontSize:12,fontWeight:700,color:store.color,flex:1}}>{cat.name} <span style={{color:C.greyText,fontWeight:400}}>({cat.items.length})</span></span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:catKey?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        {catKey&&(
+                          <div style={{paddingLeft:16}}>
+                            {cat.items.map(item=>(
+                              <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 16px 8px 0",borderBottom:"1px solid "+C.border}}>
+                                {editMode?<button type="button" onClick={()=>deleteItem(store.id,cat.id,item.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
+                                :<div onClick={()=>toggleItem(store.id,cat.id,item.id)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:"pointer",border:"2px solid "+(item.checked?store.color:C.border),background:item.checked?store.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                  {item.checked&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                </div>}
+                                <span style={{fontSize:13,color:C.dark,textDecoration:item.checked?"line-through":"none",opacity:item.checked?0.5:1,flex:1}}>{item.name}</span>
+                              </div>
+                            ))}
+                            <div style={{display:"flex",gap:8,padding:"8px 16px 8px 0"}}>
+                              <input style={{flex:1,padding:"7px 10px",border:"1px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:"inherit",color:C.dark,background:C.white,outline:"none"}}
+                                placeholder="Add item..." value={newItem[store.id+cat.id]||""}
+                                onChange={e=>setNewItem(prev=>({...prev,[store.id+cat.id]:e.target.value}))}
+                                onKeyDown={e=>e.key==="Enter"&&addItem(store.id,cat.id)}/>
+                              <button type="button" onClick={()=>addItem(store.id,cat.id)} style={{background:store.color,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {editMode&&(
+                    <div style={{display:"flex",gap:8,padding:"8px 16px"}}>
+                      <input style={{flex:1,padding:"7px 10px",border:"1px solid "+C.border,borderRadius:10,fontSize:12,fontFamily:"inherit",outline:"none"}}
+                        placeholder="New category..." value={newCatName[store.id]||""}
+                        onChange={e=>setNewCatName(prev=>({...prev,[store.id]:e.target.value}))}
+                        onKeyDown={e=>e.key==="Enter"&&addCategory(store.id)}/>
+                      <button type="button" onClick={()=>addCategory(store.id)} style={{background:store.color,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:C.white}}>+ Category</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div style={{display:"flex",gap:8}}>
+          <input style={{flex:1,padding:"12px 14px",border:"1.5px solid "+C.border,borderRadius:14,fontSize:14,fontFamily:"inherit",outline:"none"}}
+            placeholder="Add new store..." value={newStoreName}
+            onChange={e=>setNewStoreName(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&addStore()}/>
+          <button type="button" onClick={addStore} style={{background:C.teal,border:"none",borderRadius:14,padding:"12px 16px",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.white}}>+ Store</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TodoListScreen({onBack,setTab}){
+  const[todos,setTodos]=useState(()=>initTodoList());
+  const[showAdd,setShowAdd]=useState(false);
+  const[newText,setNewText]=useState("");
+  const[newDate,setNewDate]=useState("");
+  const[newNotes,setNewNotes]=useState("");
+  const[expandedId,setExpandedId]=useState(null);
+  const today=new Date().toISOString().split("T")[0];
+  const save=t=>{setTodos(t);LS.set("todoList",t);};
+  const addTodo=()=>{
+    const text=newText.trim();if(!text)return;
+    const t=[...todos,{id:"t"+Date.now(),text,dueDate:newDate||null,notes:newNotes.trim()||null,completed:false}];
+    save(t);setNewText("");setNewDate("");setNewNotes("");setShowAdd(false);
+  };
+  const toggle=id=>{save(todos.map(t=>t.id===id?{...t,completed:!t.completed}:t));};
+  const deleteTodo=id=>{save(todos.filter(t=>t.id!==id));if(expandedId===id)setExpandedId(null);};
+  const moveUp=id=>{const idx=todos.findIndex(t=>t.id===id);if(idx<=0)return;const t=[...todos];[t[idx-1],t[idx]]=[t[idx],t[idx-1]];save(t);};
+  const moveDown=id=>{const idx=todos.findIndex(t=>t.id===id);if(idx>=todos.length-1)return;const t=[...todos];[t[idx],t[idx+1]]=[t[idx+1],t[idx]];save(t);};
+  const dueBadge=(dueDate)=>{
+    if(!dueDate)return null;
+    const diff=Math.ceil((new Date(dueDate)-new Date(today))/86400000);
+    const bg=diff<0?"#FDEEF1":diff===0?"#FFF3E0":diff<=2?"#FFFBE0":"#F3F4F6";
+    const col=diff<0?C.coral:diff===0?C.orange:diff<=2?"#B8860B":C.greyText;
+    const label=diff<0?Math.abs(diff)+"d overdue":diff===0?"Today":diff===1?"Tomorrow":new Date(dueDate).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+    return <span style={{fontSize:10,fontWeight:700,color:col,background:bg,padding:"2px 7px",borderRadius:20,flexShrink:0}}>{label}</span>;
+  };
+  const active=todos.filter(t=>!t.completed);
+  const done=todos.filter(t=>t.completed);
+
+  if(showAdd)return(
+    <div style={{paddingBottom:80}}>
+      <Header title="Add Task" color={C.blue} onBack={()=>setShowAdd(false)} fs={22}/>
+      <Dots/>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+          <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:6}}>Task</label>
+          <input style={{width:"100%",padding:"11px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box"}}
+            placeholder="What do you need to do?" value={newText} onChange={e=>setNewText(e.target.value)} autoFocus/>
+        </div>
+        <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+          <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:6}}>Due Date <span style={{color:C.greyText,fontWeight:400}}>(optional)</span></label>
+          <input type="date" style={{width:"100%",padding:"11px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box"}}
+            value={newDate} onChange={e=>setNewDate(e.target.value)} min={today}/>
+        </div>
+        <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+          <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:6}}>Notes <span style={{color:C.greyText,fontWeight:400}}>(optional)</span></label>
+          <textarea style={{width:"100%",padding:"11px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box",resize:"vertical",minHeight:100,lineHeight:1.5}}
+            placeholder="Add any extra details, links or reminders..." value={newNotes} onChange={e=>setNewNotes(e.target.value)}/>
+        </div>
+        <button type="button" onClick={addTodo} style={{background:C.blue,border:"none",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",fontSize:16,fontWeight:700,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          Add Task
+        </button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{paddingBottom:80}}>
+      <Header title="To-Do List" color={C.blue} onBack={onBack} fs={24}/>
+      <Dots/>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:10}}>
+        {active.length===0&&done.length===0&&(
+          <div style={{background:C.white,borderRadius:20,padding:"40px 20px",textAlign:"center",color:C.greyText,fontSize:14,boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
+            <div style={{fontSize:40,marginBottom:12}}>✅</div>
+            <div style={{fontWeight:700,color:C.dark,marginBottom:4}}>No tasks yet!</div>
+            <div>Tap the button below to add your first to-do.</div>
+          </div>
+        )}
+        {active.length>0&&(
+          <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.blue,letterSpacing:1,padding:"12px 16px 8px"}}>TO DO ({active.length})</div>
+            {active.map((todo,i)=>(
+              <div key={todo.id} style={{borderBottom:i<active.length-1?"1px solid "+C.border:"none"}}>
+                <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px"}}>
+                  <div onClick={()=>toggle(todo.id)} style={{width:22,height:22,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+C.blue,background:"transparent",marginTop:1}}/>
+                  <div style={{flex:1,cursor:"pointer",minWidth:0}} onClick={()=>setExpandedId(expandedId===todo.id?null:todo.id)}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      <span style={{fontSize:14,fontWeight:600,color:C.dark}}>{todo.text}</span>
+                      {dueBadge(todo.dueDate)}
+                    </div>
+                    {todo.notes&&expandedId!==todo.id&&(
+                      <div style={{fontSize:12,color:C.greyText,marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{todo.notes}</div>
+                    )}
+                    {expandedId===todo.id&&todo.notes&&(
+                      <div style={{fontSize:13,color:C.greyText,marginTop:6,lineHeight:1.6,background:"#F9FAFB",borderRadius:8,padding:"8px 10px"}}>{todo.notes}</div>
+                    )}
+                  </div>
+                  <div style={{display:"flex",gap:4,flexShrink:0,marginTop:1}}>
+                    <button type="button" onClick={()=>moveUp(todo.id)} style={{width:26,height:26,borderRadius:6,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                    <button type="button" onClick={()=>moveDown(todo.id)} style={{width:26,height:26,borderRadius:6,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <button type="button" onClick={()=>deleteTodo(todo.id)} style={{width:26,height:26,borderRadius:6,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{Ic.trash()}</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {done.length>0&&(
+          <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px 8px"}}>
+              <span style={{fontSize:10,fontWeight:700,color:C.greyText,letterSpacing:1}}>COMPLETED ({done.length})</span>
+              <button type="button" onClick={()=>save(todos.filter(t=>!t.completed))} style={{border:"none",background:"none",cursor:"pointer",fontSize:11,fontWeight:700,color:C.coral,fontFamily:"inherit"}}>Clear all</button>
+            </div>
+            {done.map((todo,i)=>(
+              <div key={todo.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<done.length-1?"1px solid "+C.border:"none",opacity:0.5}}>
+                <div onClick={()=>toggle(todo.id)} style={{width:22,height:22,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+C.teal,background:C.teal,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span style={{flex:1,fontSize:13,color:C.dark,textDecoration:"line-through"}}>{todo.text}</span>
+                <button type="button" onClick={()=>deleteTodo(todo.id)} style={{width:24,height:24,borderRadius:6,background:C.grey,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{Ic.trash()}</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={()=>setShowAdd(true)} style={{background:C.blue,border:"none",borderRadius:20,padding:"16px",cursor:"pointer",fontFamily:"inherit",fontSize:16,fontWeight:700,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          Add a Task
+        </button>
+      </div>
+    </div>
+  );
+}
 function ADHDPlaceholder({title,emoji,color,bg,onBack}){
   return(
     <div style={{paddingBottom:80}}>
@@ -749,6 +1074,12 @@ function MoreTab({setSubScreen}){
       </div>
       <Dots/>
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:4}}>
+
+        <SectionHeader title="MY LISTS" color={C.blue}/>
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <Btn emoji="🛒" label="Shopping List" sub="shoppingList" bg="#E8F7F2" border="#A8D9C8" color={C.teal} subtitle="By store and category"/>
+          <Btn emoji="✅" label="To-Do List" sub="todoList" bg="#EEF6FF" border="#C8DCFF" color={C.blue} subtitle="With due dates"/>
+        </div>
 
         <SectionHeader title="CHECKLISTS" color={C.orange}/>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
@@ -962,6 +1293,8 @@ export default function App(){
     if(sub==="challengePaper")   return <ChecklistScreen title="Paper Chase" color={C.blue} data={CHALLENGE_PAPER} storageKey="challengePaper" onBack={back("more")}/>;
     if(sub==="challengeDigital") return <ChecklistScreen title="Digital Life" color={C.teal} data={CHALLENGE_DIGITAL} storageKey="challengeDigital" onBack={back("more")}/>;
     if(sub==="challengeWholeHome") return <ChecklistScreen title="Whole Home Reset" color={C.coral} data={CHALLENGE_WHOLE_HOME} storageKey="challengeWholeHome" onBack={back("more")}/>;
+    if(sub==="shoppingList")    return <ShoppingListScreen onBack={back("more")}/>;
+    if(sub==="todoList")        return <TodoListScreen onBack={back("more")} setTab={goTab}/>;
     if(sub==="adhd_overwhelmed") return <ADHDPlaceholder title="I Feel Overwhelmed" emoji="😰" color={C.blue} bg="#EEF6FF" onBack={back("more")}/>;
     if(sub==="adhd_lowenergy")   return <ADHDPlaceholder title="Low Energy Mode" emoji="🔋" color={C.orange} bg="#FFFBE0" onBack={back("more")}/>;
     if(sub==="adhd_cantstart")   return <ADHDPlaceholder title="I Can't Get Started" emoji="🪨" color={C.teal} bg="#E8F7F2" onBack={back("more")}/>;
