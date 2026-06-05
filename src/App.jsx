@@ -418,7 +418,7 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
   const[animating,setAnimating]=useState({});
   const todayKey=new Date().toISOString().split("T")[0];
   const[showCelebration,setShowCelebration]=useState(false);
-  const[celebrationDismissed,setCelebrationDismissed]=useState(()=>LS.get("celebrationDismissed",null)===new Date().toISOString().split("T")[0]);
+  const[celebrationShown,setCelebrationShown]=useState(false);
   const[confetti]=useState(()=>Array.from({length:28},(_,i)=>({left:Math.floor(Math.random()*96)+2,size:6+Math.floor(Math.random()*8),isCircle:i%3!==0,color:["#4CAF8A","#E85B6A","#F39A3D","#F4C542","#8ECAD0","#7B5DD9"][i%6],dur:(2+Math.floor(Math.random()*20)/10).toFixed(1),delay:(Math.floor(Math.random()*15)/10).toFixed(1)})));
   const[celebrationTask,setCelebrationTask]=useState(null);
   const toggle=id=>{
@@ -448,13 +448,16 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
   const allTasksDone=allToday.length>0&&allToday.every(t=>t.completed);
   const allTodosDone=todosToday.every(t=>t.completed);
   useEffect(()=>{
-    if(allTasksDone&&allTodosDone&&!celebrationDismissed){
+    if(allTasksDone&&allTodosDone&&!celebrationShown){
       setTimeout(()=>setShowCelebration(true),400);
+      setCelebrationShown(true);
+    }
+    if(!allTasksDone||!allTodosDone){
+      setCelebrationShown(false);
     }
   },[allTasksDone,allTodosDone]);
   const dismissCelebration=()=>{
-    setShowCelebration(false);setCelebrationDismissed(true);
-    LS.set("celebrationDismissed",new Date().toISOString().split("T")[0]);
+    setShowCelebration(false);
   };
   const sorted=[...allToday,...todosToday.map(t=>({...t,_isTodo:true}))];
   const dailyDone=tasks.filter(t=>t.category==="Daily"&&t.completed).length;
