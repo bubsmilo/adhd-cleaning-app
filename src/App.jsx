@@ -831,68 +831,94 @@ const CHALLENGE_WHOLE_HOME={
 
 function AllShoppingItemsScreen({onBack}){
   const[list,setList]=useState(()=>initShoppingList());
-  const[expanded,setExpanded]=useState({});
+  const[search,setSearch]=useState("");
   const save=l=>{setList(l);LS.set("shoppingList",l);};
   const deleteItem=(sid,cid,iid)=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.filter(i=>i.id!==iid)})})});};
   const deleteCategory=(sid,cid)=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.filter(c=>c.id!==cid)})});};
   const deleteStore=sid=>{save({...list,stores:list.stores.filter(s=>s.id!==sid)});};
+  const toggleItem=(sid,cid,iid)=>{save({...list,stores:list.stores.map(s=>s.id!==sid?s:{...s,categories:s.categories.map(c=>c.id!==cid?c:{...c,items:c.items.map(i=>i.id!==iid?i:{...i,checked:!i.checked})})})});};
   const regulars=LS.get("regularItems",[]);
   const deleteRegular=id=>{LS.set("regularItems",regulars.filter(r=>r.id!==id));};
+  const q=search.toLowerCase();
+
+  const renderStore=store=>{
+    const allItems=store.categories.flatMap(cat=>cat.items.map(item=>({...item,catId:cat.id,catName:cat.name})));
+    const filtered=q?allItems.filter(i=>i.name.toLowerCase().includes(q)||i.catName.toLowerCase().includes(q)):allItems;
+    if(!filtered.length&&q)return null;
+    return(
+      <div key={store.id} style={{margin:"0 16px 20px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontSize:12,fontWeight:800,color:store.color,letterSpacing:1}}>{store.name.toUpperCase()}</span>
+          <div style={{flex:1,height:1.5,background:store.color+"30",borderRadius:2}}/>
+          <span style={{fontSize:11,color:C.greyText}}>{allItems.length} item{allItems.length!==1?"s":""}</span>
+          <button type="button" onClick={()=>deleteStore(store.id)} style={{border:"none",background:"none",cursor:"pointer",padding:"2px 4px",marginLeft:2,flexShrink:0}}>{Ic.trash()}</button>
+        </div>
+        <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+          {filtered.length===0&&<div style={{padding:"14px 16px",fontSize:13,color:C.greyText,textAlign:"center"}}>No items yet</div>}
+          {filtered.map((item,i)=>(
+            <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<filtered.length-1?("1px solid "+C.border):"none"}}>
+              <div onClick={()=>toggleItem(store.id,item.catId,item.id)} style={{width:22,height:22,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(item.checked?store.color:C.border),background:item.checked?store.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {item.checked&&<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:C.dark,textDecoration:item.checked?"line-through":"none",opacity:item.checked?0.5:1}}>{item.name}</div>
+                <span style={{fontSize:10,fontWeight:700,color:store.color,background:store.color+"20",padding:"2px 8px",borderRadius:20,display:"inline-block",marginTop:3}}>{item.catName}</span>
+              </div>
+              <button type="button" onClick={()=>deleteItem(store.id,item.catId,item.id)} style={{border:"none",background:"none",cursor:"pointer",padding:4,flexShrink:0}}>{Ic.trash()}</button>
+            </div>
+          ))}
+          {store.categories.map(cat=>(
+            <div key={cat.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 16px 4px",borderTop:"1px solid "+C.border+"80"}}>
+              <span style={{fontSize:10,color:C.greyText,flex:1}}>📂 {cat.name}</span>
+              <button type="button" onClick={()=>deleteCategory(store.id,cat.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,opacity:0.5}}>{Ic.trash()}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return(
     <div style={{paddingBottom:80}}>
-      <Header title="All Items" color={C.teal} onBack={onBack} fs={24}/>
+      <div style={{padding:"20px 20px 8px",textAlign:"center"}}>
+        <h2 style={{margin:"0 0 6px",fontSize:30,fontWeight:900,letterSpacing:1,color:C.teal,textTransform:"uppercase"}}>All Items</h2>
+      </div>
       <Dots/>
-      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:10}}>
-        {list.stores.map(store=>{
-          const isOpen=expanded[store.id]!==false;
-          const totalItems=store.categories.reduce((a,c)=>a+c.items.length,0);
-          return(
-            <div key={store.id} style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",padding:"14px 16px",background:store.color+"18"}}>
-                <button type="button" onClick={()=>setExpanded(p=>({...p,[store.id]:!isOpen}))} style={{flex:1,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:20}}>🛒</span>
-                  <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800,color:store.color}}>{store.name}</div>
-                  <div style={{fontSize:11,color:C.greyText,marginTop:1}}>{totalItems} items</div></div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <button type="button" onClick={()=>deleteStore(store.id)} style={{border:"none",background:"none",cursor:"pointer",padding:"4px 6px",marginLeft:8,flexShrink:0}}>{Ic.trash()}</button>
-              </div>
-              {isOpen&&store.categories.map(cat=>(
-                <div key={cat.id} style={{borderTop:"1px solid "+C.border}}>
-                  <div style={{display:"flex",alignItems:"center",padding:"8px 14px",background:store.color+"0A"}}>
-                    <span style={{flex:1,fontSize:12,fontWeight:700,color:store.color}}>{cat.name} <span style={{color:C.greyText,fontWeight:400}}>({cat.items.length})</span></span>
-                    <button type="button" onClick={()=>deleteCategory(store.id,cat.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
-                  </div>
-                  {cat.items.map((item,i)=>(
-                    <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<cat.items.length-1?"1px solid "+C.border:"none"}}>
-                      <span style={{flex:1,fontSize:13,color:C.dark}}>{item.name}</span>
-                      <button type="button" onClick={()=>deleteItem(store.id,cat.id,item.id)} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
-                    </div>
-                  ))}
-                  {cat.items.length===0&&<div style={{padding:"8px 14px",fontSize:12,color:C.greyText}}>No items</div>}
-                </div>
-              ))}
-            </div>
-          );
-        })}
-        {regulars.length>0&&(
+      <div style={{padding:"0 16px 12px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,background:C.white,borderRadius:14,padding:"10px 14px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input style={{flex:1,border:"none",outline:"none",fontSize:14,fontFamily:"inherit",color:C.dark,background:"transparent"}}
+            placeholder="Search items..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          {search&&<button type="button" onClick={()=>setSearch("")} style={{border:"none",background:"none",cursor:"pointer",color:C.greyText,fontSize:16,padding:0}}>✕</button>}
+        </div>
+      </div>
+      {list.stores.map(renderStore)}
+      {regulars.length>0&&(
+        <div style={{margin:"0 16px 20px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <span style={{fontSize:12,fontWeight:800,color:C.orange,letterSpacing:1}}>⭐ REGULAR ITEMS</span>
+            <div style={{flex:1,height:1.5,background:C.orange+"30",borderRadius:2}}/>
+            <span style={{fontSize:11,color:C.greyText}}>{regulars.length} saved</span>
+          </div>
           <div style={{background:C.white,borderRadius:20,boxShadow:"0 2px 8px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-            <div style={{padding:"14px 16px",background:"#FFFBE018",borderBottom:"1px solid #F0D06030"}}>
-              <div style={{fontSize:15,fontWeight:800,color:C.orange}}>⭐ Regular Items</div>
-              <div style={{fontSize:11,color:C.greyText,marginTop:1}}>{regulars.length} saved regulars</div>
-            </div>
-            {regulars.map((r,i)=>(
-              <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<regulars.length-1?"1px solid "+C.border:"none"}}>
+            {regulars.filter(r=>!q||r.name.toLowerCase().includes(q)).map((r,i,arr)=>(
+              <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<arr.length-1?("1px solid "+C.border):"none"}}>
+                <span style={{fontSize:18}}>⭐</span>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,color:C.dark}}>{r.name}</div>
-                  <div style={{fontSize:11,color:C.greyText}}>{r.storeName} / {r.catName}</div>
+                  <div style={{fontSize:14,fontWeight:600,color:C.dark}}>{r.name}</div>
+                  <div style={{fontSize:11,color:C.greyText,marginTop:2}}>{r.storeName} / {r.catName}</div>
                 </div>
-                <button type="button" onClick={()=>{LS.set("regularItems",regulars.filter(reg=>reg.id!==r.id));}} style={{border:"none",background:"none",cursor:"pointer",padding:2,flexShrink:0}}>{Ic.trash()}</button>
+                <button type="button" onClick={()=>{LS.set("regularItems",regulars.filter(reg=>reg.id!==r.id));}} style={{border:"none",background:"none",cursor:"pointer",padding:4,flexShrink:0}}>{Ic.trash()}</button>
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
+      <div style={{padding:"0 16px 8px"}}>
+        <button type="button" onClick={onBack} style={{background:C.grey,border:"none",borderRadius:20,padding:"14px",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%"}}>
+          <span style={{fontSize:20}}>⚙️</span>
+          <span style={{fontSize:15,fontWeight:700,color:C.dark}}>Manage My Shopping</span>
+        </button>
       </div>
     </div>
   );
@@ -981,39 +1007,59 @@ function ShoppingListScreen({onBack,setSubScreen}){
     const canAdd=newItemName.trim()&&selectedStore&&selectedCatId;
     return(
       <div style={{paddingBottom:80}}>
-        <Header title="Add Item" color={C.teal} onBack={()=>{setShowAddItem(false);setInlineNewStore(false);}} fs={22}/>
+        <Header title="Add Item" color={C.teal} onBack={()=>{setShowAddItem(false);setInlineNewStore(false);setSelectedStore(null);setSelectedCatId(null);}} fs={22}/>
         <Dots/>
-        <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:14}}>
-          <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
-            <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:6}}>Item Name</label>
-            <input style={{width:"100%",padding:"11px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box"}}
+        <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:20}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:C.greyText,letterSpacing:1,marginBottom:10}}>ITEM NAME</div>
+            <input style={{width:"100%",padding:"14px 16px",border:"2px solid "+C.border,borderRadius:16,fontSize:16,fontFamily:"inherit",color:C.dark,outline:"none",boxSizing:"border-box",background:C.white}}
               placeholder="What do you need to buy?" value={newItemName} onChange={e=>setNewItemName(e.target.value)} autoFocus/>
           </div>
-          <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
-            <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:10}}>Store</label>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
-              {list.stores.map(s=>(
-                <button type="button" key={s.id} onClick={()=>{setSelectedStore(s.id);setSelectedCatId(null);}} style={{padding:"10px 6px",borderRadius:20,border:"2px solid "+(selectedStore===s.id?s.color:C.border),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:selectedStore===s.id?s.color:C.white,color:selectedStore===s.id?C.white:C.dark,textAlign:"center"}}>{s.name}</button>
-              ))}
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:C.greyText,letterSpacing:1,marginBottom:10}}>STORE</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+              {list.stores.map(s=>{
+                const sel=selectedStore===s.id;
+                return(
+                  <button type="button" key={s.id} onClick={()=>{setSelectedStore(s.id);setSelectedCatId(null);}}
+                    style={{border:"none",cursor:"pointer",borderRadius:20,padding:"16px 8px",background:sel?s.color:C.grey,fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"background 0.15s"}}>
+                    <span style={{fontSize:24}}>🛒</span>
+                    <span style={{fontSize:12,fontWeight:700,color:sel?C.white:C.dark,textAlign:"center",lineHeight:1.2}}>{s.name}</span>
+                  </button>
+                );
+              })}
+              {!inlineNewStore&&(
+                <button type="button" onClick={()=>setInlineNewStore(true)}
+                  style={{border:"2px dashed "+C.border,cursor:"pointer",borderRadius:20,padding:"16px 8px",background:"transparent",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:24}}>➕</span>
+                  <span style={{fontSize:12,fontWeight:700,color:C.greyText}}>Add Store</span>
+                </button>
+              )}
             </div>
-            {!inlineNewStore&&<button type="button" onClick={()=>setInlineNewStore(true)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:C.teal,padding:"4px 0"}}>+ Add New Store</button>}
             {inlineNewStore&&(
-              <div style={{display:"flex",gap:8,marginTop:6}}>
-                <input style={{flex:1,padding:"8px 10px",border:"1.5px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:"inherit",outline:"none"}}
+              <div style={{display:"flex",gap:8,marginTop:10}}>
+                <input style={{flex:1,padding:"10px 12px",border:"1.5px solid "+C.border,borderRadius:12,fontSize:14,fontFamily:"inherit",outline:"none"}}
                   placeholder="New store name..." value={inlineStoreName} onChange={e=>setInlineStoreName(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&addInlineStore()}/>
-                <button type="button" onClick={addInlineStore} style={{background:C.teal,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
-                <button type="button" onClick={()=>setInlineNewStore(false)} style={{background:C.grey,border:"none",borderRadius:10,padding:"8px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.dark}}>✕</button>
+                  onKeyDown={e=>e.key==="Enter"&&addInlineStore()} autoFocus/>
+                <button type="button" onClick={addInlineStore} style={{background:C.teal,border:"none",borderRadius:12,padding:"10px 16px",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.white}}>Add</button>
+                <button type="button" onClick={()=>setInlineNewStore(false)} style={{background:C.grey,border:"none",borderRadius:12,padding:"10px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.dark}}>✕</button>
               </div>
             )}
           </div>
           {selStore&&(
-            <div style={{background:C.white,borderRadius:20,padding:"18px 16px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
-              <label style={{fontSize:13,fontWeight:700,color:C.dark,display:"block",marginBottom:10}}>Category</label>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-                {selStore.categories.map(c=>(
-                  <button type="button" key={c.id} onClick={()=>setSelectedCatId(c.id)} style={{padding:"10px 6px",borderRadius:20,border:"2px solid "+(selectedCatId===c.id?selStore.color:C.border),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:selectedCatId===c.id?selStore.color:C.white,color:selectedCatId===c.id?C.white:C.dark,textAlign:"center"}}>{c.name}</button>
-                ))}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.greyText,letterSpacing:1,marginBottom:10}}>CATEGORY</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                {selStore.categories.map(c=>{
+                  const sel=selectedCatId===c.id;
+                  return(
+                    <button type="button" key={c.id} onClick={()=>setSelectedCatId(c.id)}
+                      style={{border:"none",cursor:"pointer",borderRadius:20,padding:"14px 8px",background:sel?selStore.color:C.grey,fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:4,transition:"background 0.15s"}}>
+                      <span style={{fontSize:20}}>📂</span>
+                      <span style={{fontSize:12,fontWeight:700,color:sel?C.white:C.dark,textAlign:"center",lineHeight:1.2}}>{c.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1036,6 +1082,7 @@ function ShoppingListScreen({onBack,setSubScreen}){
       </div>
     );
   }
+
 
   if(showAddStore)return(
     <div style={{paddingBottom:80}}>
@@ -1096,36 +1143,34 @@ function ShoppingListScreen({onBack,setSubScreen}){
                 </button>
                 {isOpen&&checkedSt>0&&<button type="button" onClick={()=>clearChecked(store.id)} style={{border:"none",background:store.color,borderRadius:10,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:C.white,marginLeft:8}}>Clear done</button>}
               </div>
-              {isOpen&&store.categories.map(cat=>{
-                const catKey=expandedCat[store.id+cat.id];
-                return(
-                  <div key={cat.id} style={{marginBottom:2}}>
-                    <div style={{display:"flex",alignItems:"center",padding:"8px 16px",cursor:"pointer"}} onClick={()=>setExpandedCat(prev=>({...prev,[store.id+cat.id]:!prev[store.id+cat.id]}))}>
-                      <span style={{fontSize:12,fontWeight:700,color:store.color,flex:1}}>{cat.name} <span style={{color:C.greyText,fontWeight:400}}>({cat.items.length})</span></span>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.greyText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:catKey?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
-                    </div>
-                    {catKey&&(
-                      <div style={{paddingLeft:16}}>
-                        {cat.items.map(item=>(
-                          <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 16px 8px 0",borderBottom:"1px solid "+C.border}}>
-                            <div onClick={()=>{const l={...list,stores:list.stores.map(s=>s.id!==store.id?s:{...s,categories:s.categories.map(c=>c.id!==cat.id?c:{...c,items:c.items.map(i=>i.id!==item.id?i:{...i,checked:!i.checked})})})};save(l);}} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:"pointer",border:"2px solid "+(item.checked?store.color:C.border),background:item.checked?store.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                              {item.checked&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                            </div>
-                            <span style={{fontSize:13,color:C.dark,textDecoration:item.checked?"line-through":"none",opacity:item.checked?0.5:1,flex:1}}>{item.name}</span>
-                          </div>
-                        ))}
-                        <div style={{display:"flex",gap:8,padding:"8px 16px 8px 0"}}>
-                          <input style={{flex:1,padding:"7px 10px",border:"1px solid "+C.border,borderRadius:10,fontSize:13,fontFamily:"inherit",color:C.dark,background:C.white,outline:"none"}}
-                            placeholder="Quick add..." value={newItem[store.id+cat.id]||""}
-                            onChange={e=>setNewItem(prev=>({...prev,[store.id+cat.id]:e.target.value}))}
-                            onKeyDown={e=>e.key==="Enter"&&addItem(store.id,cat.id)}/>
-                          <button type="button" onClick={()=>addItem(store.id,cat.id)} style={{background:store.color,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
+              {isOpen&&(
+                <div>
+                  {store.categories.map(cat=>cat.items.map(item=>(
+                    <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid "+C.border,background:C.white}}>
+                      <div onClick={()=>{const l={...list,stores:list.stores.map(s=>s.id!==store.id?s:{...s,categories:s.categories.map(c=>c.id!==cat.id?c:{...c,items:c.items.map(i=>i.id!==item.id?i:{...i,checked:!i.checked})})})};save(l);}} style={{width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",border:"2px solid "+(item.checked?store.color:C.border),background:item.checked?store.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {item.checked&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </div>
+                      <div style={{width:38,height:38,borderRadius:10,background:store.color+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>🛒</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:14,fontWeight:700,color:C.dark,textDecoration:item.checked?"line-through":"none",opacity:item.checked?0.5:1}}>{item.name}</div>
+                        <div style={{marginTop:3}}>
+                          <span style={{fontSize:10,fontWeight:700,color:store.color,background:store.color+"20",padding:"2px 8px",borderRadius:20,display:"inline-block"}}>{cat.name}</span>
                         </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    </div>
+                  )))}
+                  {store.categories.length>0&&(
+                    <div style={{display:"flex",gap:8,padding:"10px 16px"}}>
+                      <input style={{flex:1,padding:"8px 12px",border:"1px solid "+C.border,borderRadius:12,fontSize:13,fontFamily:"inherit",color:C.dark,background:C.white,outline:"none"}}
+                        placeholder="Quick add to General..."
+                        value={newItem[store.id+(store.categories[0]&&store.categories[0].id)]||""}
+                        onChange={e=>setNewItem(prev=>({...prev,[store.id+(store.categories[0]&&store.categories[0].id)]:e.target.value}))}
+                        onKeyDown={e=>e.key==="Enter"&&store.categories[0]&&addItem(store.id,store.categories[0].id)}/>
+                      <button type="button" onClick={()=>store.categories[0]&&addItem(store.id,store.categories[0].id)} style={{background:store.color,border:"none",borderRadius:12,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.white}}>Add</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
