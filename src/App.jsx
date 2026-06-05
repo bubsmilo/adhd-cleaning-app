@@ -416,6 +416,10 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
   const pct=total?Math.round((done/total)*100):0;
   const pendingMins=allToday.filter(t=>!t.completed).reduce((a,t)=>a+t.minutes,0);
   const[animating,setAnimating]=useState({});
+  const todayKey=new Date().toISOString().split("T")[0];
+  const[showCelebration,setShowCelebration]=useState(false);
+  const[celebrationDismissed,setCelebrationDismissed]=useState(()=>LS.get("celebrationDismissed",null)===new Date().toISOString().split("T")[0]);
+  const[confetti]=useState(()=>Array.from({length:28},(_,i)=>({left:Math.floor(Math.random()*96)+2,size:6+Math.floor(Math.random()*8),isCircle:i%3!==0,color:["#4CAF8A","#E85B6A","#F39A3D","#F4C542","#8ECAD0","#7B5DD9"][i%6],dur:(2+Math.floor(Math.random()*20)/10).toFixed(1),delay:(Math.floor(Math.random()*15)/10).toFixed(1)})));
   const[celebrationTask,setCelebrationTask]=useState(null);
   const toggle=id=>{
     setAnimating(prev=>({...prev,[id]:"pop"}));
@@ -440,6 +444,17 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
     setTimeout(()=>setAnimating(prev=>{const n={...prev};delete n[id];return n;}),280);
     const updated=(todos||[]).map(t=>t.id===id?{...t,completed:!t.completed}:t);
     setTodos(updated);LS.set("todoList",updated);
+  };
+  const allTasksDone=allToday.length>0&&allToday.every(t=>t.completed);
+  const allTodosDone=todosToday.every(t=>t.completed);
+  useEffect(()=>{
+    if(allTasksDone&&allTodosDone&&!celebrationDismissed){
+      setTimeout(()=>setShowCelebration(true),400);
+    }
+  },[allTasksDone,allTodosDone]);
+  const dismissCelebration=()=>{
+    setShowCelebration(false);setCelebrationDismissed(true);
+    LS.set("celebrationDismissed",new Date().toISOString().split("T")[0]);
   };
   const sorted=[...allToday,...todosToday.map(t=>({...t,_isTodo:true}))];
   const dailyDone=tasks.filter(t=>t.category==="Daily"&&t.completed).length;
@@ -645,6 +660,28 @@ function HomeScreen({tasks,setTasks,setSubScreen,setEditId,completedChores,setTa
         </div>
         <span style={{fontSize:28,flexShrink:0}}>🌵</span>
       </div>
+      {showCelebration&&(
+        <div onClick={dismissCelebration} style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",background:"rgba(15,20,40,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px",boxSizing:"border-box"}}>
+          <style>{".cf{position:fixed;top:-20px;animation:fall var(--d)s var(--dl)s ease-in forwards}@keyframes fall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}@keyframes popIn{0%{transform:scale(0.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}"}</style>
+          {confetti.map((c,i)=>(
+            <div key={i} className="cf" style={{"--d":c.dur,"--dl":c.delay,left:c.left+"%",width:c.size,height:c.size,borderRadius:c.isCircle?"50%":"3px",background:c.color}}/>
+          ))}
+          <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:28,padding:"32px 24px",maxWidth:340,width:"100%",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",animation:"popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards",position:"relative",zIndex:1001}}>
+            <div style={{fontSize:56,marginBottom:8}}>🎉</div>
+            <div style={{fontSize:26,fontWeight:900,color:C.dark,marginBottom:6}}>All Done!</div>
+            <div style={{fontSize:15,color:C.greyText,lineHeight:1.6,marginBottom:20}}>
+              Amazing work! You cleared every task on your list today. That is seriously impressive!
+            </div>
+            {streak>0&&<div style={{background:"#FFF8E0",borderRadius:16,padding:"10px 16px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <span style={{fontSize:22}}>🔥</span>
+              <span style={{fontSize:14,fontWeight:700,color:C.orange}}>{streak} day streak — keep it going!</span>
+            </div>}
+            <button type="button" onClick={dismissCelebration} style={{background:C.teal,border:"none",borderRadius:16,padding:"14px 32px",cursor:"pointer",fontFamily:"inherit",fontSize:16,fontWeight:700,color:C.white,width:"100%"}}>
+              Woohoo! 🌟
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
